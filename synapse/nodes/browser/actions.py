@@ -445,7 +445,7 @@ class BrowserStripDataNode(SuperNode):
                         return document.evaluate(sel, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
                     }
                     // Handle Magic Path (dot-notation)
-                    if (sel.includes('.') && !sel.startsWith('.') && !sel.includes('#') && !sel.includes('[')) {
+                    if (/^[\w\-]+(?:\[\d+\])?(?:\.[\w\-]+(?:\[\d+\])?)*$/.test(sel)) {
                          let parts = sel.split('.');
                          let curr = document;
                          for (let p of parts) {
@@ -461,7 +461,7 @@ class BrowserStripDataNode(SuperNode):
                                  curr = curr.querySelector(p);
                              }
                          }
-                         return curr;
+                         if (curr) return curr;
                     }
                     // Fallback to CSS
                     try { return document.querySelector(sel); } catch(e) { return null; }
@@ -699,7 +699,8 @@ class BrowserElementAttributesNode(SuperNode):
                     if (sel.startsWith('/') || sel.startsWith('//')) {
                         return document.evaluate(sel, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
                     }
-                    if (sel.includes('.') && !sel.startsWith('.') && !sel.includes('#')) {
+                    // Handle Magic Path (dot-notation)
+                    if (/^[\w\-]+(?:\[\d+\])?(?:\.[\w\-]+(?:\[\d+\])?)*$/.test(sel)) {
                          let parts = sel.split('.');
                          let curr = document;
                          for (let p of parts) {
@@ -715,7 +716,7 @@ class BrowserElementAttributesNode(SuperNode):
                                  curr = curr.querySelector(p);
                              }
                          }
-                         return curr;
+                         if (curr) return curr;
                     }
                     try { return document.querySelector(sel); } catch(e) { return null; }
                 };
