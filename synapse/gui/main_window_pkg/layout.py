@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QDockWidget, QTabWidget, QTextEdit, QVBoxLayout, QWidget, QCheckBox, QSlider, QLabel, QApplication, QHBoxLayout
+from PyQt6.QtWidgets import QDockWidget, QTabWidget, QTextEdit, QPlainTextEdit, QVBoxLayout, QWidget, QCheckBox, QSlider, QLabel, QApplication, QHBoxLayout
 from PyQt6.QtCore import Qt
 from synapse.gui.node_library.widget import NodeLibrary
 from synapse.gui.properties_panel import PropertiesPanel
@@ -269,7 +269,7 @@ class LayoutMixin:
         self.tabs.addTab(self.console_output, "Console")
         
         # Debug Tab (HTML supported)
-        self.debug_output = QTextEdit()
+        self.debug_output = QPlainTextEdit()
         self.debug_output.setReadOnly(True)
         self.tabs.addTab(self.debug_output, "Debug")
         

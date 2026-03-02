@@ -41,6 +41,7 @@ snippets/
 Synapse VS/
 test_*.*
 sig.txt
+launch_sig.txt
 
 # Build artifacts
 dist/

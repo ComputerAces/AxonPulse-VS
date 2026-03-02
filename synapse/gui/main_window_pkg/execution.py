@@ -132,7 +132,7 @@ class ExecutionMixin:
             self.console_output.append(line)
         elif channel == "debug": 
             # Always append for logic/debug monitoring
-            self.debug_output.append(line)
+            self.debug_output.appendPlainText(line)
         elif channel == "flow": 
             self.highlight_flow_wire(line, source_graph)
         elif channel == "node_start":

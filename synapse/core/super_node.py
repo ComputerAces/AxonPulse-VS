@@ -103,7 +103,8 @@ class SuperNode(BaseNode):
 
         # 3. Generate Ports
         ports = []
-        for name, dtype in final_schema.items():
+        for name, dtype_val in final_schema.items():
+            dtype = dtype_val.get("type", DataType.ANY) if isinstance(dtype_val, dict) else dtype_val
             ports.append((name, dtype))
             # Also register with BaseNode mechanism for checking
             self.add_input(name, dtype)
@@ -137,7 +138,8 @@ class SuperNode(BaseNode):
 
         # 3. Generate Ports
         ports = []
-        for name, dtype in final_schema.items():
+        for name, dtype_val in final_schema.items():
+            dtype = dtype_val.get("type", DataType.ANY) if isinstance(dtype_val, dict) else dtype_val
             ports.append((name, dtype))
             self.add_output(name, dtype)
             
@@ -165,8 +167,9 @@ class SuperNode(BaseNode):
                 continue
                 
             # Check Schema
-            target_type = self.input_schema.get(name)
-            if target_type:
+            schema_val = self.input_schema.get(name)
+            if schema_val:
+                target_type = schema_val.get("type", DataType.ANY) if isinstance(schema_val, dict) else schema_val
                 try:
                     clean_args[name] = TypeCaster.cast(val, target_type)
                 except Exception as e:
@@ -204,8 +207,9 @@ class SuperNode(BaseNode):
                 continue
                 
             # Check Schema
-            target_type = self.input_schema.get(name)
-            if target_type:
+            schema_val = self.input_schema.get(name)
+            if schema_val:
+                target_type = schema_val.get("type", DataType.ANY) if isinstance(schema_val, dict) else schema_val
                 try:
                     clean_args[name] = TypeCaster.cast(val, target_type)
                 except Exception as e:

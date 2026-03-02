@@ -18,9 +18,10 @@ class DebugNode(SuperNode):
 
     def __init__(self, node_id, name, bridge):
         super().__init__(node_id, name, bridge)
-        self.is_native = True 
+        self.is_native = True
         self.is_debug = True 
         self.properties["Header"] = "*"
+        self.properties["Handle Formatting"] = False
         self.define_schema()
         self.register_handlers()
 
@@ -31,7 +32,8 @@ class DebugNode(SuperNode):
         self.input_schema = {
             "Flow": DataType.FLOW,
             "Header": DataType.STRING,
-            "Data": DataType.ANY
+            "Data": DataType.ANY,
+            "Handle Formatting": {"type": DataType.BOOLEAN, "no_show": True}
         }
         self.output_schema = {
             "Flow": DataType.FLOW
@@ -90,6 +92,13 @@ class DebugNode(SuperNode):
         t_name = t.__name__
         
         if isinstance(data, (str, int, float, bool)):
+            if isinstance(data, str) and self.properties.get("Handle Formatting", False):
+                # Replace literal escape sequences with actual characters
+                try:
+                    # decoding unicode escapes parses \n, \t, etc.
+                    data = data.encode('utf-8').decode('unicode_escape')
+                except:
+                    pass
             return str([t_name, data])
             
         if isinstance(data, (list, dict, tuple, set)):

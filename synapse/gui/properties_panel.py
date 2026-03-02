@@ -171,7 +171,8 @@ class PropertiesPanel(QWidget):
                 # [NEW] Check schema for specialized types
                 dtype = DataType.ANY
                 if hasattr(logic_node, 'input_schema'):
-                    dtype = logic_node.input_schema.get(key, DataType.ANY)
+                    schema_val = logic_node.input_schema.get(key, DataType.ANY)
+                    dtype = schema_val.get("type", DataType.ANY) if isinstance(schema_val, dict) else schema_val
 
                 if key.lower() == "value" and ("True/False" in logic_node.name or "Boolean" in logic_node.name):
                     self.add_dropdown_property_ui(key, value, ["True", "False"])
@@ -295,8 +296,8 @@ class PropertiesPanel(QWidget):
         self.form_layout.addRow("Project Category:", cat_edit)
         
         # Description
-        from PyQt6.QtWidgets import QTextEdit
-        desc_edit = QTextEdit(meta.get("project_description", ""))
+        from PyQt6.QtWidgets import QPlainTextEdit
+        desc_edit = QPlainTextEdit(meta.get("project_description", ""))
         desc_edit.setMaximumHeight(80)
         desc_edit.textChanged.connect(lambda: self._update_meta(graph_widget, "project_description", desc_edit.toPlainText()))
         self.form_layout.addRow("Description:", desc_edit)
@@ -306,7 +307,7 @@ class PropertiesPanel(QWidget):
         graph.mark_modified(None)
                     
     def add_string_property_ui(self, key, value):
-        from PyQt6.QtWidgets import QHBoxLayout, QDialog, QDialogButtonBox, QTextEdit
+        from PyQt6.QtWidgets import QHBoxLayout, QDialog, QDialogButtonBox, QPlainTextEdit
         from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
         
         container = QWidget()
@@ -338,7 +339,7 @@ class PropertiesPanel(QWidget):
                     self.current_widget.update_layout()
 
     def open_multiline_editor(self, key, line_widget):
-        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QDialogButtonBox, QTextEdit
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QDialogButtonBox, QPlainTextEdit
         
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Edit {key}")
@@ -346,7 +347,7 @@ class PropertiesPanel(QWidget):
         
         layout = QVBoxLayout(dialog)
         
-        text_edit = QTextEdit()
+        text_edit = QPlainTextEdit()
         text_edit.setPlainText(line_widget.text())
         layout.addWidget(text_edit)
         

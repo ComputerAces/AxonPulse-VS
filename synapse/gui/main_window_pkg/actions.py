@@ -171,10 +171,10 @@ class ActionsMixin:
 
     def copy_selection(self):
         # Check if a text widget has focus and selected text
-        from PyQt6.QtWidgets import QApplication, QTextEdit, QLineEdit, QMessageBox
+        from PyQt6.QtWidgets import QApplication, QTextEdit, QPlainTextEdit, QLineEdit, QMessageBox
         
         focus_widget = QApplication.focusWidget()
-        if isinstance(focus_widget, (QTextEdit, QLineEdit)):
+        if isinstance(focus_widget, (QTextEdit, QPlainTextEdit, QLineEdit)):
             if focus_widget.textCursor().hasSelection():
                 focus_widget.copy()
                 return
@@ -184,10 +184,10 @@ class ActionsMixin:
             graph.copy_selection()
 
     def paste_selection(self):
-        from PyQt6.QtWidgets import QApplication, QTextEdit, QLineEdit
+        from PyQt6.QtWidgets import QApplication, QTextEdit, QPlainTextEdit, QLineEdit
         
         focus_widget = QApplication.focusWidget()
-        if isinstance(focus_widget, (QTextEdit, QLineEdit)):
+        if isinstance(focus_widget, (QTextEdit, QPlainTextEdit, QLineEdit)):
             focus_widget.paste()
             return
 

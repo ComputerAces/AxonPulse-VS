@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QPlainTextEdit
 from PyQt6.QtCore import Qt
 
 class SearchableConsoleWidget(QWidget):
     """
-    A wrapper around QTextEdit that provides a search/filter toolbar.
+    A wrapper around QPlainTextEdit that provides a search/filter toolbar.
     """
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -35,7 +35,7 @@ class SearchableConsoleWidget(QWidget):
         toolbar.addWidget(cls_btn)
         
         # Output
-        self.output = QTextEdit()
+        self.output = QPlainTextEdit()
         self.output.setReadOnly(True)
         # Use Monospace font
         font = self.output.font()
@@ -54,7 +54,7 @@ class SearchableConsoleWidget(QWidget):
         self.search_input.clear()
         
     def refresh_view(self):
-        """Rebuilds the QTextEdit content based on filter."""
+        """Rebuilds the QPlainTextEdit content based on filter."""
         self.output.clear()
         
         # Optimization: If many lines, maybe we should batch?
@@ -71,7 +71,7 @@ class SearchableConsoleWidget(QWidget):
         self.output.moveCursor(self.output.textCursor().MoveOperation.End)
 
     def append(self, text):
-        """API compatibility with QTextEdit.append"""
+        """API compatibility with QPlainTextEdit.appendPlainText/QTextEdit.append"""
         # Clean text
         text = str(text).rstrip()
         
@@ -84,7 +84,7 @@ class SearchableConsoleWidget(QWidget):
             
         # Update View if matches
         if not self.filter_text or self.filter_text in text.lower():
-            self.output.append(text)
+            self.output.appendPlainText(text)
 
     def clear(self):
         """Clears both history and view."""
