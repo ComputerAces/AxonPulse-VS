@@ -1,10 +1,39 @@
 import multiprocessing
 import time
-import pickle
+import msgpack
+import datetime
+from enum import Enum
 from multiprocessing import shared_memory
 from synapse.utils.logger import setup_logger
+from synapse.core.engine.services import ConnectionPoolManager
 
 logger = setup_logger("SynapseBridge")
+
+def msgpack_encode(obj):
+    if isinstance(obj, Enum):
+        return {'__enum__': str(obj.__class__.__name__), 'value': obj.value}
+    if isinstance(obj, datetime.datetime):
+        return {'__datetime__': obj.isoformat()}
+    if isinstance(obj, (set, tuple)):
+        return list(obj)
+    if hasattr(obj, '__dict__'):
+        return {'__object__': obj.__class__.__name__, 'state': dict(obj.__dict__)}
+    return str(obj)
+
+def msgpack_decode(obj):
+    if '__enum__' in obj:
+        enum_name = obj['__enum__']
+        import synapse.core.types as types_module
+        if hasattr(types_module, enum_name):
+            enum_class = getattr(types_module, enum_name)
+            return enum_class(obj['value'])
+        return obj['value']
+    if '__datetime__' in obj:
+        return datetime.datetime.fromisoformat(obj['__datetime__'])
+    if '__object__' in obj:
+        return obj['state']
+    return obj
+
 
 class SynapseBridge:
     """
@@ -46,6 +75,9 @@ class SynapseBridge:
         # Local Process State (per-instance, per-process)
         self._local_cache = {} # key -> (obj, version)
         self._local_objects = {} # [NEW] Non-picklable live objects (Browser handles, etc.)
+        
+        # [NEW] Centralized Connection Pooling for network sockets (Phase 2)
+        self.pool_manager = ConnectionPoolManager()
         
         # [WINDOWS PERSISTENCE] Persistent handles to SHM blocks
         # Only the "Master" process (Engine) needs to fill this.
@@ -96,7 +128,7 @@ class SynapseBridge:
         return state
 
     def __getstate__(self):
-        """Standard pickle cleanup to allow transfer across processes."""
+        """Standard cleanup to allow transfer across processes."""
         state = self.__dict__.copy()
         # AuthenticationString inside manager can't be pickled
         state['manager'] = None 
@@ -274,8 +306,9 @@ class SynapseBridge:
         if metadata is None:
             return default
 
-        # metadata format: (shm_name, version, timestamp)
+        # metadata format: (shm_name, version, timestamp, [length])
         shm_name, version = metadata[0], metadata[1]
+        payload_len = metadata[3] if len(metadata) > 3 else None
         
         # 2. Check Local Cache
         cached_entry = self._local_cache.get(final_key)
@@ -286,7 +319,8 @@ class SynapseBridge:
         try:
             existing_shm = shared_memory.SharedMemory(name=shm_name)
             try:
-                data = pickle.loads(existing_shm.buf[:])
+                buf_data = existing_shm.buf[:payload_len] if payload_len else existing_shm.buf[:]
+                data = msgpack.unpackb(bytes(buf_data), object_hook=msgpack_decode, raw=False)
                 self._local_cache[final_key] = (data, version)
                 return data
             finally:
@@ -351,7 +385,7 @@ class SynapseBridge:
                 
             try:
                 # 1. Serialize
-                data_bytes = pickle.dumps(value)
+                data_bytes = msgpack.packb(value, default=msgpack_encode, use_bin_type=True)
                 
                 # 2. Get Deterministic SHM Name (Reuse block)
                 import hashlib
@@ -388,7 +422,7 @@ class SynapseBridge:
                     shm.unlink()
                     raise b_err
                 
-                registry_update[scoped_key] = (shm_name, new_version, time.time())
+                registry_update[scoped_key] = (shm_name, new_version, time.time(), len(data_bytes))
                 self._local_cache[scoped_key] = (value, new_version)
                 
             except (BrokenPipeError, EOFError, ConnectionResetError) as e:
@@ -417,7 +451,7 @@ class SynapseBridge:
         
         try:
             # 1. Serialize
-            data_bytes = pickle.dumps(value)
+            data_bytes = msgpack.packb(value, default=msgpack_encode, use_bin_type=True)
             
             # [TIMEOUT LOCK] Wait up to 10 seconds for the lock
             lock = self._get_lock(scoped_key)
@@ -469,8 +503,8 @@ class SynapseBridge:
                     raise b_err
                 
                 # 5. Update Registry (Atomic)
-                # metadata format: (shm_name, version, timestamp)
-                self._variables_registry[scoped_key] = (shm_name, new_version, time.time())
+                # metadata format: (shm_name, version, timestamp, length)
+                self._variables_registry[scoped_key] = (shm_name, new_version, time.time(), len(data_bytes))
                 
                 # Update local cache immediately
                 self._local_cache[scoped_key] = (value, new_version)
@@ -543,6 +577,10 @@ class SynapseBridge:
         self._variables_registry.clear()
         self._local_cache.clear()
         self._lock_owners.clear()
+        
+        # Shutdown connection pool on clear to avoid leak
+        if hasattr(self, 'pool_manager'):
+            self.pool_manager.shutdown()
 
     def _is_process_alive(self, pid):
         """Cross-platform check to see if a PID is still actively running in the OS."""
