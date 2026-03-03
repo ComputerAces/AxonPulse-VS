@@ -341,6 +341,14 @@ class SynapseBridge:
         registry_update = {}
         for key, value in data_dict.items():
             scoped_key = f"{target_scope}:{key}"
+            
+            # [TIMEOUT LOCK] Wait up to 10 seconds for the lock
+            lock = self._get_lock(scoped_key)
+            acquired = lock.acquire(timeout=10.0)
+            if not acquired:
+                logger.error(f"[TIMEOUT] Failed to acquire lock for '{scoped_key}' after 10s. Forcing overlap.")
+                # We do not return here, we proceed without the lock to prevent deadlocks (User Request)
+                
             try:
                 # 1. Serialize
                 data_bytes = pickle.dumps(value)
@@ -391,6 +399,10 @@ class SynapseBridge:
                     pass
                 else:
                     logger.error(f"Batch Set failed for '{scoped_key}': {e}")
+            finally:
+                if acquired:
+                    try: lock.release()
+                    except: pass
         
         if registry_update:
             self._variables_registry.update(registry_update)
@@ -407,7 +419,13 @@ class SynapseBridge:
             # 1. Serialize
             data_bytes = pickle.dumps(value)
             
-            with self._get_lock(scoped_key):
+            # [TIMEOUT LOCK] Wait up to 10 seconds for the lock
+            lock = self._get_lock(scoped_key)
+            acquired = lock.acquire(timeout=10.0)
+            if not acquired:
+                logger.error(f"[TIMEOUT] Failed to acquire lock for '{scoped_key}' after 10s. Forcing overlap.")
+            
+            try:
                 # 2. Get Deterministic SHM Name (Reuse block)
                 import hashlib
                 
@@ -458,6 +476,11 @@ class SynapseBridge:
                 self._local_cache[scoped_key] = (value, new_version)
                 self._shm_dirty = True
                 
+            finally:
+                if acquired:
+                    try: lock.release()
+                    except: pass
+                    
         except (BrokenPipeError, EOFError, ConnectionResetError) as e:
             # Silent during shutdown
             pass
@@ -471,7 +494,13 @@ class SynapseBridge:
         """Atomsically increments a numeric variable in the bridge."""
         target_scope = scope_id or self.default_scope
         scoped_key = f"{target_scope}:{key}"
-        with self._get_lock(scoped_key):
+        
+        lock = self._get_lock(scoped_key)
+        acquired = lock.acquire(timeout=10.0)
+        if not acquired:
+            logger.error(f"[TIMEOUT] Failed to acquire lock for incrementing '{scoped_key}' after 10s. Forcing overlap.")
+            
+        try:
             val = self.get(key, 0, scope_id=target_scope)
             try:
                 new_val = val + amount
@@ -479,6 +508,10 @@ class SynapseBridge:
                 return new_val
             except:
                 return val
+        finally:
+            if acquired:
+                try: lock.release()
+                except: pass
 
     def decrement(self, key, amount=1, scope_id=None):
         """Atomsically decrements a numeric variable in the bridge."""
@@ -511,33 +544,97 @@ class SynapseBridge:
         self._local_cache.clear()
         self._lock_owners.clear()
 
-    def lock(self, key, node_id, timeout=5.0):
+    def _is_process_alive(self, pid):
+        """Cross-platform check to see if a PID is still actively running in the OS."""
+        if pid is None:
+            return False
+            
+        try:
+            import psutil
+            return psutil.pid_exists(pid)
+        except ImportError:
+            # Fallback if psutil is unavailable (less reliable on Windows with PID reuse)
+            if os.name == 'nt':
+                # Windows fallback (hacky, but works without psutil)
+                try:
+                    import ctypes
+                    # PROCESS_QUERY_INFORMATION (0x0400)
+                    handle = ctypes.windll.kernel32.OpenProcess(0x0400, False, pid)
+                    if not handle:
+                        return False
+                    
+                    exit_code = ctypes.c_ulong()
+                    ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+                    ctypes.windll.kernel32.CloseHandle(handle)
+                    
+                    # 259 (STILL_ACTIVE)
+                    return exit_code.value == 259
+                except:
+                    return True # Fail safe
+            else:
+                # Unix fallback
+                import sys
+                try:
+                    import os
+                    os.kill(pid, 0)
+                    return True
+                except OSError:
+                    return False
+
+    def lock(self, key, node_id, timeout=10.0):
         """
         Attempts to conceptually 'lock' a variable key for exclusive access by a node.
+        Includes a Watchdog that verifies if the lock owner's OS Process ID is still alive.
         """
         start_time = time.time()
+        import os
+        current_pid = os.getpid()
+        
         while time.time() - start_time < timeout:
             with self._get_lock(key):
-                current_owner = self._lock_owners.get(key)
-                if current_owner is None:
-                    self._lock_owners[key] = node_id
+                current_owner_data = self._lock_owners.get(key)
+                
+                # 1. Lock is Free
+                if current_owner_data is None:
+                    self._lock_owners[key] = (node_id, current_pid)
                     return True
-                elif current_owner == node_id:
+                    
+                # 2. Lock is Owned by US
+                owner_id = current_owner_data[0] if isinstance(current_owner_data, tuple) else current_owner_data
+                if owner_id == node_id:
+                    # Update our PID just in case we inherited/restarted
+                    self._lock_owners[key] = (node_id, current_pid)
                     return True
+                    
+                # 3. Lock is Owned by Someone Else... Are they dead?
+                owner_pid = current_owner_data[1] if isinstance(current_owner_data, tuple) else None
+                if owner_pid is not None:
+                    if not self._is_process_alive(owner_pid):
+                        logger.warning(f"[WATCHDOG] Force Breaking Lock on '{key}'. Owner Node '{owner_id}' (PID: {owner_pid}) is DEAD in the OS.")
+                        # Steal the lock immediately
+                        self._lock_owners[key] = (node_id, current_pid)
+                        return True
             
             time.sleep(0.05) # Wait before retrying
         
-        logger.warning(f"Node {node_id} TIMED OUT trying to acquire lock for '{key}' (Held by {self._lock_owners.get(key)})")
+        # If we reach here, we hit the timeout and the owner is supposedly still alive
+        owner_data = self._lock_owners.get(key)
+        owner_str = f"{owner_data[0]} (PID: {owner_data[1]})" if isinstance(owner_data, tuple) else str(owner_data)
+        logger.warning(f"Node {node_id} TIMED OUT after {timeout}s trying to acquire lock for '{key}' (Held by {owner_str})")
         return False
 
     def unlock(self, key, node_id):
         """Releases a lock on a variable."""
         with self._get_lock(key):
-            current_owner = self._lock_owners.get(key)
-            if current_owner == node_id:
+            current_owner_data = self._lock_owners.get(key)
+            if current_owner_data is None:
+                return
+                
+            owner_id = current_owner_data[0] if isinstance(current_owner_data, tuple) else current_owner_data
+            if owner_id == node_id:
                 del self._lock_owners[key]
             else:
-                logger.error(f"Node {node_id} tried to unlock '{key}' but it is owned by {current_owner}")
+                logger.error(f"Node {node_id} tried to unlock '{key}' but it is owned by {owner_id}")
 
     def dump_state(self):
         """Returns a snapshot of the current state for debugging."""
