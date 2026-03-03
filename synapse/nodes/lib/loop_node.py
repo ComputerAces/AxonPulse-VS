@@ -107,11 +107,14 @@ class LoopNode(SuperNode):
             # [FIX] Use STABLE base_stack to avoid recursive nesting
             active_scope = self.bridge.get(scope_key)
             if active_scope:
-                overrides = { "Body": base_stack + [active_scope] }
+                # Dynamic port name for subclasses (defaults to "Body")
+                body_port = getattr(self, "_loop_body_port_name", "Body")
+                overrides = { body_port: base_stack + [active_scope] }
                 self.bridge.set(f"{self.node_id}_StackOverrides", overrides, self.name)
             
-            # Pulse Body
-            self.bridge.set(f"{self.node_id}_ActivePorts", ["Body"], self.name)
+            # Pulse custom iteration port
+            body_port = getattr(self, "_loop_body_port_name", "Body")
+            self.bridge.set(f"{self.node_id}_ActivePorts", [body_port], self.name)
         else:
             self.finish_loop(base_stack)
             

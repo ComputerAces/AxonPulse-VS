@@ -353,6 +353,13 @@ class NodeActionsMixin:
 
     # --- Helper Methods ---
     def _add_port_dialog(self, title, add_method, prop_name=None, sync_py=False, type_prop=None):
+        # [FIX] Auto-infer type_prop if not provided to preserve dynamic typing
+        if not type_prop:
+            if prop_name in ["additional_inputs", "Additional Inputs"] or "Input" in title:
+                type_prop = "input_types"
+            elif prop_name in ["additional_outputs", "Additional Outputs"] or "Output" in title:
+                type_prop = "output_types"
+
         # 1. Get Name
         name, ok = QInputDialog.getText(None, title, "Name:")
         if not ok or not name: return

@@ -95,11 +95,19 @@ class SuperNode(BaseNode):
                 final_schema[name] = DataType.ANY
 
         # [NEW] Merge "Additional Inputs" (GUI-specific dynamic ports)
+        # Type fallback order: 'input_types' -> 'custom_input_schema'
+        type_map = self.properties.get("input_types", {})
+        if not type_map: type_map = self.properties.get("custom_input_schema", {})
+        
         for key in ["Additional Inputs", "additional_inputs"]:
             if key in self.properties and isinstance(self.properties[key], list):
                 for name in self.properties[key]:
                     if name not in final_schema:
-                        final_schema[name] = DataType.ANY
+                        t_val = type_map.get(name)
+                        try:
+                            final_schema[name] = DataType(t_val) if t_val else DataType.ANY
+                        except Exception:
+                            final_schema[name] = DataType.ANY
 
         # 3. Generate Ports
         ports = []
@@ -130,11 +138,19 @@ class SuperNode(BaseNode):
                 final_schema[name] = DataType.ANY
 
         # [NEW] Merge "Additional Outputs" (GUI-specific dynamic ports)
+        # Type fallback order: 'output_types' -> 'custom_output_schema'
+        type_map = self.properties.get("output_types", {})
+        if not type_map: type_map = self.properties.get("custom_output_schema", {})
+        
         for key in ["Additional Outputs", "additional_outputs"]:
             if key in self.properties and isinstance(self.properties[key], list):
                 for name in self.properties[key]:
                     if name not in final_schema:
-                        final_schema[name] = DataType.ANY
+                        t_val = type_map.get(name)
+                        try:
+                            final_schema[name] = DataType(t_val) if t_val else DataType.ANY
+                        except Exception:
+                            final_schema[name] = DataType.ANY
 
         # 3. Generate Ports
         ports = []

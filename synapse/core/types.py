@@ -45,6 +45,12 @@ class SortDirection(Enum):
     ASCENDING = "Ascending"
     DESCENDING = "Descending"
 
+class TriggerType(Enum):
+    KEYBOARD = "Keyboard"
+    TIMER = "Timer"
+    DATE = "Date"
+    TIME = "Time"
+
 class DialogMode(Enum):
     OPEN_FILE = "Open File"
     SAVE_FILE = "Save File"

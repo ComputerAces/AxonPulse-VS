@@ -26,7 +26,6 @@ from .remap_node import RemapNode
 from .compare_node import CompareNode
 from .trig_nodes import SinNode, CosNode, TanNode, AsinNode, AcosNode, AtanNode, Atan2Node
 from .trigger_node import EventTriggerNode, ServiceExitTriggerNode
-from .trigger_nodes import TriggerNode, ExitTriggerNode as LogicExitTriggerNode
 from .wait_node import WaitNode, ThrottleNode
 from .boolean_constant_node import BooleanTypeNode
 from .state_nodes import UserActivityNode

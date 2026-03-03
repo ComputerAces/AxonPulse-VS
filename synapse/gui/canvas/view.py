@@ -293,6 +293,12 @@ class NodeCanvas(QGraphicsView):
         
         menu = QMenu(self)
         
+        # [NEW] Create Node via QuickPicker
+        create_action = QAction("Create Node...", self)
+        create_action.triggered.connect(lambda: self._show_create_node_menu(self.mapToScene(event.pos()), event.globalPos()))
+        menu.addAction(create_action)
+        menu.addSeparator()
+        
         # Standard Actions
         copy_action = QAction("Copy", self)
         copy_action.setShortcut("Ctrl+C")
@@ -343,6 +349,22 @@ class NodeCanvas(QGraphicsView):
              menu.addAction(snippet_action)
             
         menu.exec(event.globalPos())
+
+    def _show_create_node_menu(self, scene_pos, global_pos):
+        """Spawns the QuickPicker to create a new node at the cursor position."""
+        from synapse.gui.dialogs.quick_picker import QuickPicker
+        picker = QuickPicker(parent=self)
+        
+        def on_node_selected(label, is_subgraph, path):
+            if is_subgraph:
+                self.create_subgraph_node(path, scene_pos)
+            else:
+                self.create_standard_node(label, scene_pos)
+            self.modified.emit()
+            
+        picker.node_selected.connect(on_node_selected)
+        picker.move(global_pos)
+        picker.exec()
 
     def create_group(self, nodes):
         from synapse.gui.frame_widget import FrameWidget

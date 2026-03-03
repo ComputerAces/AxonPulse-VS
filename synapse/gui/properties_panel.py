@@ -182,6 +182,11 @@ class PropertiesPanel(QWidget):
                      self.add_dropdown_property_ui(key, value, [">", "<", "==", "!=", ">=", "<="])
                 elif key.lower() == "compare_type" or key == "Compare Type" or dtype == DataType.COMPARE_TYPE:
                     self.add_dropdown_property_ui(key, value, ["<", "<=", ">", ">=", "==", "!="])
+                elif key == "Trigger Type" or dtype == DataType.TRIGGER:
+                    from synapse.core.types import TriggerType
+                    options = [e.value for e in TriggerType]
+                    val_str = value.value if hasattr(value, 'value') else str(value)
+                    self.add_dropdown_property_ui(key, val_str, options)
                 elif isinstance(value, bool) or dtype == DataType.BOOLEAN:
                      self.add_bool_property_ui(key, value)
                 elif isinstance(value, (int, float)) and dtype in [DataType.NUMBER, DataType.INTEGER, DataType.FLOAT]:

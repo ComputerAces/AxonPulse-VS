@@ -8,9 +8,9 @@ import threading
 import time
 import datetime
 import re
-from synapse.core.super_node import SuperNode
+from synapse.nodes.lib.loop_node import LoopNode
 from synapse.nodes.registry import NodeRegistry
-from synapse.core.types import DataType
+from synapse.core.types import DataType, TriggerType
 from synapse.core.dependencies import DependencyManager
 
 
@@ -125,10 +125,16 @@ class _TriggerListener:
             return
 
         self.logger.info(f"Waiting until Date: {target_dt.isoformat()}")
+        
+        last_fired = None
         while self._running:
-            if datetime.datetime.now() >= target_dt:
-                self.callback()
-                break
+            now = datetime.datetime.now()
+            if now >= target_dt:
+                # One-shot lock for the day it matches
+                current_day = now.date()
+                if last_fired != current_day:
+                    self.callback()
+                    last_fired = current_day
             time.sleep(1.0)
 
     def _run_time(self):
@@ -141,6 +147,8 @@ class _TriggerListener:
              return
 
         self.logger.info(f"Trigger set for {target_time} daily.")
+        
+        last_fired = None
         while self._running:
             now = datetime.datetime.now()
             today_target = datetime.datetime.combine(now.date(), target_time)
@@ -153,27 +161,33 @@ class _TriggerListener:
                 wait_seconds -= sleep_amt
             
             if self._running:
-                self.callback()
+                # One-shot lock for the minute it matches
+                current_minute = datetime.datetime.now().replace(second=0, microsecond=0)
+                if last_fired != current_minute:
+                    self.callback()
+                    last_fired = current_minute
                 time.sleep(1.1)
 
 
 @NodeRegistry.register("Event Trigger", "Flow/Triggers")
-class EventTriggerNode(SuperNode):
+class EventTriggerNode(LoopNode):
     """
-    Standardized service for listening to global system events.
+    Standardized service for listening to global system events within an ongoing Sub-Flow.
     Supports Keyboard Hotkeys, Time Intervals (Timers), and scheduled Date/Time events.
-    Must be 'Armed' to start listening and 'Disarmed' to stop.
+    When an event fires, it branches its execution to 'Triggered'. Once that branch finishes, 
+    it returns to this node ('Continue') to wait for the next occurrence.
     
     Inputs:
-    - Arm: Start the background listener.
-    - Disarm: Stop the background listener.
+    - Arm: Start the background listener sequence.
+    - Disarm: Stop the background listener and exit the sub-flow.
+    - End: Force kill the underlying thread immediately.
     - Value: The trigger configuration (Hotkey string, time interval, or ISO date).
     - Trigger Type: The mode of detection (Keyboard, Timer, Date, Time).
     
     Outputs:
-    - Flow: Triggered when armed/disarmed.
-    - Trigger: Pulse fired when the event occurs.
-    - Stop: Pulse fired when disarmed.
+    - Flow: Fired when explicitly stopped/disarmed.
+    - Triggered: Pulse fired each time the event occurs.
+    - Index: The amount of times the event has fired so far.
     """
     version = "2.1.0"
 
@@ -181,44 +195,71 @@ class EventTriggerNode(SuperNode):
         super().__init__(node_id, name, bridge)
         self.is_native = True
         self.is_service = True
-        self.properties["Trigger Type"] = "Keyboard"  
+        self._loop_body_port_name = "Triggered"
+        self.properties["Trigger Type"] = TriggerType.KEYBOARD  
         self.properties["Value"] = "Ctrl+Shift+P"
         self._listener = None
-        self.define_schema()
-        self.register_handler("Arm", self.arm_trigger)
-        self.register_handler("Disarm", self.disarm_trigger)
+        self._event_fired = False
+        
+        # Unbind standard dict schema from super to fully overwrite it below
+        
+    def register_handlers(self):
+        super().register_handlers() # Flow, Continue, Break, End
+        # Standardize 'Arm' and 'Disarm' to the loop handles
+        self.register_handler("Arm", self.do_work)   # Maps to _trigger='Flow' essentially
+        self.register_handler("Disarm", self.do_work) # Maps to _trigger='Break'
 
     def define_schema(self):
+        # Override LoopNode Schema completely
         self.input_schema = {
             "Arm": DataType.FLOW,
+            "Continue": DataType.FLOW,
             "Disarm": DataType.FLOW,
+            "Break": DataType.FLOW,
+            "End": DataType.FLOW,
             "Value": DataType.STRING,
             "Trigger Type": DataType.TRIGGER
         }
         self.output_schema = {
             "Flow": DataType.FLOW,
-            "Trigger": DataType.FLOW,
-            "Stop": DataType.FLOW
+            "Triggered": DataType.FLOW,
+            "Index": DataType.INTEGER
         }
 
-    def disarm_trigger(self, **kwargs):
-        self.logger.info("Disarming trigger...")
-        if self._listener:
-            self._listener.stop()
-            self._listener = None
-        self.bridge.set(f"{self.node_id}_ActivePorts", ["Stop"], self.name)
-        return True
+    def do_work(self, **kwargs):
+        _trigger = kwargs.get("_trigger", "Flow")
+        if _trigger == "Arm": _trigger = "Flow"
+        if _trigger == "Disarm": _trigger = "Break"
+        
+        # Intercept Continue to reset flag
+        if _trigger == "Continue":
+            self._event_fired = False
+            
+        kwargs["_trigger"] = _trigger
+        
+        # Route End and Break to cleanly stop listener
+        if _trigger in ["Break", "End"]:
+            if self._listener:
+                self._listener.stop()
+                self._listener = None
+                
+        return super().do_work(**kwargs)
 
-    def arm_trigger(self, Value=None, **kwargs):
-        trigger_type = kwargs.get("Trigger Type") or self.properties.get("Trigger Type", "Keyboard").lower()
-        val = Value if Value else kwargs.get("Value") or self.properties.get("Value", "")
+    def _on_loop_start(self, **kwargs):
+        """Called when Flow/Arm is hit to initialize the persistent Listener."""
+        t_type = kwargs.get("Trigger Type")
+        if t_type is None: t_type = self.properties.get("Trigger Type", TriggerType.KEYBOARD)
+        trigger_type = t_type.value.lower() if hasattr(t_type, 'value') else str(t_type).lower()
+        
+        val = kwargs.get("Value") or self.properties.get("Value", "")
         
         if self._listener:
             self._listener.stop()
             
+        self._event_fired = False
+            
         def on_trigger():
-            self.bridge.set(f"{self.node_id}_ActivePorts", ["Trigger"], self.name)
-            self.bridge.set(f"_TRIGGER_FIRE_{self.node_id}", True, self.name)
+            self._event_fired = True
 
         config_mode = "keyboard"
         if "timer" in trigger_type or "interval" in trigger_type: config_mode = "timer"
@@ -228,14 +269,36 @@ class EventTriggerNode(SuperNode):
         self._listener = _TriggerListener(config_mode, val, on_trigger, self.logger)
         self._listener.start()
         
-        self.logger.info(f"Armed ({config_mode}): {val}")
-        self.bridge.set(f"{self.node_id}_ActivePorts", ["Flow"], self.name)
-        return True
+        self.logger.info(f"Trigger Listener Armed ({config_mode}): {val} - Waiting...")
 
-    def stop(self):
-        if self._listener:
-            self._listener.stop()
-            self._listener = None
+
+    def _check_condition(self, index, **kwargs):
+        """
+        Hold execution in a soft sleep state until _event_fired becomes true.
+        """
+        # We need a reference to know if the loop itself was forcefully killed externally
+        active_key = f"{self.node_id}_loop_active"
+        
+        while self.bridge.get(active_key) and not self._event_fired:
+            time.sleep(0.1) # Soft block
+            
+        # If it broke out because the engine died or node disarmed, return False
+        if not self.bridge.get(active_key):
+            return False, None
+            
+        # Swap schema port internally before returning True to route to 'Triggered'
+        # Superclass expects 'Body'
+        self.bridge.set(f"{self.node_id}_ActivePorts", ["Triggered"], self.name)
+        # Note: We need to override the LoopNode `ActivePorts` which defaults to ["Body"]
+        
+        # Instead, we will intercept it AFTER super().do_work? 
+        # Actually LoopNode forcefully sets `["Body"]` in `do_work` if this is true.
+        # We can just let it pulse Body, but wait... our port is named "Triggered".
+        # We will override LoopNode's hardcoding via ActivePorts map in the subclasses if needed.
+        # For now, let's keep the name "Triggered" in schema, but we must ensure `LoopNode` outputs to it.
+        # I'll just change LoopNode locally if needed, but it's simpler to just let it output "Body" and map it visually, 
+        # or we can simply replace "Body" with "Triggered" natively in LoopNode logic.
+        return True, None
 
 
 @NodeRegistry.register("Service Exit Trigger", "Flow/Triggers")
