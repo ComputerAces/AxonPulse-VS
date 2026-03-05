@@ -7,6 +7,7 @@ from synapse.core.flow_controller import FlowController
 from synapse.core.context_manager import ContextManager
 from synapse.core.node_dispatcher import NodeDispatcher
 from synapse.core.port_registry import PortRegistry
+from synapse.core.dependencies import DependencyManager
 
 from .data_io import DataMixin
 from .state_management import StateMixin
@@ -169,6 +170,45 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
         
         # Use provided stack or engine's initial context
         pulse_stack = initial_stack if initial_stack is not None else self.initial_context
+
+        # [PRE-FLIGHT SCANNER / PRE-WARMING] (Phase 4)
+        if hasattr(self, "nodes") and not self.parent_bridge:
+            # We only do global pre-warm for the top-level execution engine to avoid infinite hangs on sub-threads
+            logger.info("Initializing Pre-Flight Requirement Scan...")
+            missing_reqs = set()
+            
+            for node_id, node in self.nodes.items():
+                node_type = type(node).__name__
+                node_name = getattr(node, "name", "")
+                
+                # Dynamic Code requirements
+                if "Python" in node_name or "Script" in node_name or "Code" in node_type:
+                    explicit_reqs = node.properties.get("Requirements", "")
+                    if explicit_reqs:
+                        for req in explicit_reqs.splitlines():
+                            req = req.strip()
+                            if req and not req.startswith("#"):
+                                if not DependencyManager.is_installed(req):
+                                    missing_reqs.add(req)
+                
+                # Dynamic node resolution check can be forced here to trigger local `ensure` calls safely.
+                # All node constructors run early, so those `ensure` calls technically already triggered.
+                # But we explicitly capture Python Script additions which are delayed to logic runtime otherwise.
+                
+            if missing_reqs:
+                logger.warning(f"Pre-Flight Scan found {len(missing_reqs)} missing dependencies.")
+                for req in missing_reqs:
+                    if not self.headless:
+                        # Attempt to auto-install headless or via GUI prompts if needed
+                        logger.info(f"Pre-Warming: Attempting to install {req}...")
+                        success = DependencyManager.ensure(req)
+                        if not success:
+                            raise SystemError(f"Pre-Flight Execution Halted: Missing required dependency '{req}' could not be installed.")
+                    else:
+                        # In headless mode (server), abort immediately to prevent mid-run crash
+                        raise SystemError(f"Pre-Flight Execution Halted: Headless runtime is missing dependency '{req}'. Check container image.")
+            else:
+                logger.info("Pre-Flight Scan completed. All dependencies warmed.")
 
         # [PRODUCTION MODE VALIDATION]
         start_count = 0

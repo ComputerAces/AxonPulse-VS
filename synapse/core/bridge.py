@@ -442,6 +442,115 @@ class SynapseBridge:
             self._variables_registry.update(registry_update)
             self._shm_dirty = True
 
+    def mutate(self, key, action, payload, scope_id=None):
+        """
+        [Phase 3] IPC Delta Updates (The "Change Request" Architecture)
+        Targeted in-place modifications to large Shared Memory collections (Lists/Dicts)
+        without requiring the logic node to transmit the entire object back and forth.
+        
+        Args:
+            action (str): e.g., 'list_append', 'list_remove', 'dict_update', 'dict_pop'
+        Returns:
+            bool: True if successful, False if the object couldn't be mutated.
+        """
+        target_scope = scope_id or self.default_scope
+        scoped_key = f"{target_scope}:{key}"
+        
+        lock = self._get_lock(scoped_key)
+        acquired = lock.acquire(timeout=10.0)
+        if not acquired:
+            logger.error(f"[TIMEOUT] Failed to acquire lock for mutating '{scoped_key}' after 10s. Forcing overlap.")
+            
+        try:
+            # 1. Read Current Data
+            metadata = self._variables_registry.get(scoped_key)
+            if not metadata:
+                logger.error(f"Cannot mutate '{scoped_key}': Variable does not exist.")
+                return False
+                
+            shm_name, version = metadata[0], metadata[1]
+            payload_len = metadata[3] if len(metadata) > 3 else None
+            
+            try:
+                existing_shm = shared_memory.SharedMemory(name=shm_name)
+                buf_data = existing_shm.buf[:payload_len] if payload_len else existing_shm.buf[:]
+                current_data = msgpack.unpackb(bytes(buf_data), object_hook=msgpack_decode, raw=False)
+                del buf_data # explicitly free memory view
+            except Exception as e:
+                logger.error(f"Cannot mutate '{scoped_key}': Failed to read existing SHM: {e}")
+                return False
+            finally:
+                if 'existing_shm' in locals():
+                    existing_shm.close()
+
+            # 2. Apply In-Place Mutation
+            try:
+                if action == "list_append" and isinstance(current_data, list):
+                    current_data.append(payload)
+                elif action == "list_remove" and isinstance(current_data, list):
+                    if payload in current_data:
+                        current_data.remove(payload)
+                elif action == "dict_update" and isinstance(current_data, dict):
+                    if isinstance(payload, dict):
+                        current_data.update(payload)
+                elif action == "dict_pop" and isinstance(current_data, dict):
+                    current_data.pop(payload, None)
+                else:
+                    logger.error(f"Mutation failed: Action '{action}' invalid for type {type(current_data)}")
+                    return False
+            except Exception as e:
+                logger.error(f"Mutation logic failed on '{scoped_key}': {e}")
+                return False
+                
+            # 3. Serialize and Write Back
+            data_bytes = msgpack.packb(current_data, default=msgpack_encode, use_bin_type=True)
+            import hashlib
+            new_version = version + 1
+            new_shm_name = f"syn_{hashlib.md5(scoped_key.encode()).hexdigest()[:10]}_{new_version}"
+            
+            # Since size might have grown, we generally create a new block for simplicity and safety,
+            # or try to reuse if the existing SHM happened to be allocated larger previously.
+            # To be strictly safe with append causing growth, we create new and unlink old later.
+            try:
+                shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=new_shm_name)
+                shm.buf[:len(data_bytes)] = data_bytes
+                self._pinned_shm[new_shm_name] = shm
+            except Exception as e:
+                logger.error(f"Failed to allocate new SHM for mutation of '{scoped_key}': {e}")
+                if 'shm' in locals():
+                    shm.close()
+                    try: shm.unlink()
+                    except: pass
+                return False
+
+            # 4. Atomic Registry Update
+            self._variables_registry[scoped_key] = (new_shm_name, new_version, time.time(), len(data_bytes))
+            self._local_cache[scoped_key] = (current_data, new_version)
+            self._shm_dirty = True
+            
+            # 5. Cleanup Old Block (Deferred via unpinning in a real GC, 
+            # here we simply let pin_all/clear handle OS unlinks eventually, 
+            # or we explicitly unlink the immediate old one if we held the pin)
+            try:
+                if shm_name in self._pinned_shm:
+                    old_shm = self._pinned_shm.pop(shm_name)
+                    old_shm.close()
+                    old_shm.unlink()
+            except: pass
+            
+            return True
+
+        except (BrokenPipeError, EOFError, ConnectionResetError):
+            pass
+        except Exception as e:
+            if "pipe is being closed" not in str(e).lower():
+                logger.error(f"Failed to mutate Shared Memory for '{scoped_key}': {e}")
+            return False
+        finally:
+            if acquired:
+                try: lock.release()
+                except: pass
+
     def set(self, key, value, source_node_id="System", scope_id=None):
         """
         Writes a value to Shared Memory and updates the Registry.
