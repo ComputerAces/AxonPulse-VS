@@ -1,6 +1,6 @@
-# Synapse VS (SVS) - Project Overview
+# AxonPulse VS (SVS) - Project Overview
 
-**Synapse VS** is a high-performance visual scripting platform designed for secure automation, multi-tenant connectivity, and seamless AI orchestration. It allows developers to build complex, context-aware workflows through an intuitive node-based interface.
+**AxonPulse VS** is a high-performance visual scripting platform designed for secure automation, multi-tenant connectivity, and seamless AI orchestration. It allows developers to build complex, context-aware workflows through an intuitive node-based interface.
 
 ---
 
@@ -11,7 +11,7 @@ SVS utilizes a **Hybrid Execution Model** where the UI and Engine are decoupled 
 ```mermaid
 graph TD
     UI["Architect UI (PyQt6)"] <--> ISM["Identity Manager (ISM)"]
-    ISM <--> Bridge["Synapse Bridge"]
+    ISM <--> Bridge["AxonPulse Bridge"]
     Bridge <--> Engine["Execution Engine"]
     
     Engine --> SuperNode["SuperNode (v2.0.0)"]
@@ -27,13 +27,13 @@ graph TD
 
 ### 1. SuperNode Architecture (v2.0.0)
 
-The standard base class for all nodes (`synapse/core/super_node.py`).
+The standard base class for all nodes (`axonpulse/core/super_node.py`).
 
 - **Strict Typing**: Inputs and Outputs are defined via `define_schema()` using `DataType` enums.
 - **Event-Driven**: Logic is triggered via `register_handler("Flow", self.callback)` rather than overriding `execute()`.
 - **Async & Threading**: Native support for asynchronous handlers and threaded execution loops.
 
-### 2. The Bridge (synapse/core/bridge.py)
+### 2. The Bridge (axonpulse/core/bridge.py)
 
 A Zero-Copy Shared Memory layer for real-time IPC.
 
@@ -99,10 +99,10 @@ def define_schema(self):
 
 | Directory | Component | Purpose |
 | :--- | :--- | :--- |
-| `synapse/core/` | **Core** | Engine, Bridge, SuperNode, Loader. |
-| `synapse/gui/` | **Interface** | PyQt6 node canvas, Miniworld, Property panels. |
-| `synapse/nodes/` | **Library** | Native node implementations (Standard Lib, Media, Network). |
-| `synapse/models/` | **Data** | Data classes and state management. |
+| `axonpulse/core/` | **Core** | Engine, Bridge, SuperNode, Loader. |
+| `axonpulse/gui/` | **Interface** | PyQt6 node canvas, Miniworld, Property panels. |
+| `axonpulse/nodes/` | **Library** | Native node implementations (Standard Lib, Media, Network). |
+| `axonpulse/models/` | **Data** | Data classes and state management. |
 | `plugins/` | **Plugins** | Reusable `.syp` and `.spy` extensions. |
 
 ---
@@ -128,13 +128,13 @@ The project maintains a structured documentation hierarchy to support developers
 
 ### 📖 System Documentation
 
-- **[Installation Guide](file:///f:/My%20Programs/Synapse%20VS/docs/Installing.md)**: Hardware requirements and platform setup.
-- **[Developer Guide](file:///f:/My%20Programs/Synapse%20VS/docs/developer.md)**: Deep dive into SuperNode architecture, lifecycle, and core internals.
-- **[PowerUser Guide](file:///f:/My%20Programs/Synapse%20VS/docs/PowerUser.md)**: Advanced scripting and workflow optimization techniques.
+- **[Installation Guide](file:///f:/My%20Programs/AxonPulse%20VS/docs/Installing.md)**: Hardware requirements and platform setup.
+- **[Developer Guide](file:///f:/My%20Programs/AxonPulse%20VS/docs/developer.md)**: Deep dive into SuperNode architecture, lifecycle, and core internals.
+- **[PowerUser Guide](file:///f:/My%20Programs/AxonPulse%20VS/docs/PowerUser.md)**: Advanced scripting and workflow optimization techniques.
 
 ### 🧩 Node Reference
 
-- The **[docs/nodes/](file:///f:/My%20Programs/Synapse%20VS/docs/nodes/)** directory contains auto-generated documentation for the entire standard library.
+- The **[docs/nodes/](file:///f:/My%20Programs/AxonPulse%20VS/docs/nodes/)** directory contains auto-generated documentation for the entire standard library.
 - Each node class's `DocString` is used to populate interactive tooltips within the **Architect UI**.
 
 ---
@@ -142,4 +142,4 @@ The project maintains a structured documentation hierarchy to support developers
 ---
 
 > [!TIP]
-> Refer to `synapse/nodes/lib/` for examples of v2.0.0 SuperNodes.
+> Refer to `axonpulse/nodes/lib/` for examples of v2.0.0 SuperNodes.

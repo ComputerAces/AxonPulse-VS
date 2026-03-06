@@ -1,6 +1,6 @@
-# Synapse VS (SVS) - Developer Guide
+# AxonPulse VS (SVS) - Developer Guide
 
-This document provides a technical deep dive into the Synapse VS backend, architecture, and extension patterns.
+This document provides a technical deep dive into the AxonPulse VS backend, architecture, and extension patterns.
 
 ## 🏗️ Architecture Overview
 
@@ -16,7 +16,7 @@ The heart of SVS, responsible for graph pulsing and node execution.
 - **Node Dispatching**: `NodeDispatcher` routes nodes to either the **Native Track** (Worker Thread) or **Heavy Track** (Subprocess).
 - **Lifecycle Management**: v2.1.0 nodes strictly follow the `define_schema() -> register_handlers() -> __init__` sequence to ensure thread-safe initialization.
 
-### 2. Synapse Bridge (`SynapseBridge`)
+### 2. AxonPulse Bridge (`AxonPulseBridge`)
 
 The IPC (Inter-Process Communication) layer.
 
@@ -36,7 +36,7 @@ The frontend built with PyQt6.
 
 ---
 
-## 🛠️ Extending Synapse VS
+## 🛠️ Extending AxonPulse VS
 
 There are two primary ways to add new functionality to SVS.
 
@@ -44,13 +44,13 @@ There are two primary ways to add new functionality to SVS.
 
 Written in Python and registered directly into the library. These are best for low-level system integrations or high-performance logic.
 
-- **Location**: `synapse/nodes/lib/`
+- **Location**: `axonpulse/nodes/lib/`
 - **Pattern**:
 
     ```python
-    from synapse.core.super_node import SuperNode
-    from synapse.nodes.registry import NodeRegistry
-    from synapse.core.types import DataType
+    from axonpulse.core.super_node import SuperNode
+    from axonpulse.nodes.registry import NodeRegistry
+    from axonpulse.core.types import DataType
 
     @NodeRegistry.register("My Custom Node", "My Category")
     class MyNode(SuperNode):
@@ -98,14 +98,14 @@ Any graph you create in the Architect can become a reusable node.
 
 AI Providers use a unified interface pattern. All providers inherit from `AIProvider` and implement the same methods.
 
-- **Location**: `synapse/nodes/lib/ai_nodes.py`
+- **Location**: `axonpulse/nodes/lib/ai_nodes.py`
 - **Pattern**:
 
     ```python
-    from synapse.nodes.lib.ai_nodes import AIProvider
-    from synapse.nodes.registry import NodeRegistry
-    from synapse.core.node import BaseNode
-    from synapse.core.types import DataType
+    from axonpulse.nodes.lib.ai_nodes import AIProvider
+    from axonpulse.nodes.registry import NodeRegistry
+    from axonpulse.core.node import BaseNode
+    from axonpulse.core.types import DataType
 
     class MyCustomProvider(AIProvider):
         def __init__(self, api_key, model, endpoint):
@@ -178,19 +178,19 @@ AI Providers use a unified interface pattern. All providers inherit from `AIProv
 
 #### Data Safety Systems
 
-- **The DataBuffer**: Defined in `synapse/core/data.py`, this wrapper protects the UI from lagging. Huge binary payloads are masked as string `[data]` in the console and properties panel. They are only unpacked when needed by processing nodes.
+- **The DataBuffer**: Defined in `axonpulse/core/data.py`, this wrapper protects the UI from lagging. Huge binary payloads are masked as string `[data]` in the console and properties panel. They are only unpacked when needed by processing nodes.
 - **ErrorObject**: A standardized container for exceptions that captures Project Name, Node Name, Inputs, and Stack Traces, passing them safely across the Bridge.
 
 #### Proprietary Formats
 
-- **Datetime `#[...]#`**: Time operations in `synapse/utils/datetime_utils.py` require strict wrapping (e.g., `#[2025-10-01]#`).
+- **Datetime `#[...]#`**: Time operations in `axonpulse/utils/datetime_utils.py` require strict wrapping (e.g., `#[2025-10-01]#`).
   - Supports dynamic arithmetic (e.g., `+ 1 Day`, `- 3 Years`).
   - Auto-detects `YYYY-MM-DD` vs `YYYY-MM-DD HH:MM:SS`.
 
 #### SubGraph Intelligence
 
-- **Hot Reloading & Cache Invalidation**: The `SubGraphNode` monitors the source `.syp` file. If the data changes, it invalidates the current `ExecutionEngine` and `SynapseBridge` cache, performing a fresh reload to ensure the graph executes the newest logic.
-- **Robust Loading**: Utilizes a shared `load_graph_data` utility in `synapse/core/loader.py` that handles unregistered node types via a generic fallback.
+- **Hot Reloading & Cache Invalidation**: The `SubGraphNode` monitors the source `.syp` file. If the data changes, it invalidates the current `ExecutionEngine` and `AxonPulseBridge` cache, performing a fresh reload to ensure the graph executes the newest logic.
+- **Robust Loading**: Utilizes a shared `load_graph_data` utility in `axonpulse/core/loader.py` that handles unregistered node types via a generic fallback.
 - **Version Conflict**: It compares the `project_version` of the external file vs the embedded data, always choosing the newer version.
 - **Error Bubbling**: Exceptions in a subgraph bubble up to the parent node's "Error Flow" port if connected.
 - **Dynamic Outputs**: SubGraph nodes scan child graph Return nodes and build outputs dynamically:
@@ -221,11 +221,11 @@ AI Providers use a unified interface pattern. All providers inherit from `AIProv
 
 ## 📦 Hot Packages & DependencyManager
 
-Synapse VS uses a lightweight **Hot Package** system to manage optional dependencies. Only 4 packages are required (`PyQt6`, `requests`, `psutil`, `numpy`) — everything else is installed on-demand.
+AxonPulse VS uses a lightweight **Hot Package** system to manage optional dependencies. Only 4 packages are required (`PyQt6`, `requests`, `psutil`, `numpy`) — everything else is installed on-demand.
 
 ### How It Works
 
-- **`synapse/core/dependencies.py`** contains the `DependencyManager` class.
+- **`axonpulse/core/dependencies.py`** contains the `DependencyManager` class.
 - `DependencyManager.ensure(pip_name, import_name)` checks if a package is installed. If not, it prompts the user via a GUI dialog (or auto-installs in headless mode).
 - Each node file defines `ensure_*()` helper functions at module level that wrap `DependencyManager.ensure()` and cache the imported module in a global variable.
 
@@ -234,7 +234,7 @@ Synapse VS uses a lightweight **Hot Package** system to manage optional dependen
 When creating a new node that needs a package not in `requirements.txt`:
 
 ```python
-from synapse.core.dependencies import DependencyManager
+from axonpulse.core.dependencies import DependencyManager
 
 # Lazy Global
 my_lib = None
@@ -266,15 +266,15 @@ def execute(self, **kwargs):
 
 | Component | Responsibility | Key File |
 | :--- | :--- | :--- |
-| **ExecutionEngine** | Core logic & loop | `synapse/core/engine.py` |
-| **SynapseBridge** | Data sharing & IPC | `synapse/core/bridge.py` |
-| **NodeRegistry** | Node discovery | `synapse/nodes/registry.py` |
-| **FlowController** | Queueing & Branching | `synapse/core/flow_controller.py` |
-| **DependencyManager** | Hot Package install & lazy loading | `synapse/core/dependencies.py` |
-| **DataBuffer** | Large Data protection | `synapse/core/data.py` |
-| **TypeCaster** | Type validation & casting | `synapse/core/types.py` |
-| **ErrorObject** | Standardized error container | `synapse/core/data.py` |
-| **NamespaceGenerator** | Collision-safe worker naming | `synapse/utils/namespace.py` |
+| **ExecutionEngine** | Core logic & loop | `axonpulse/core/engine.py` |
+| **AxonPulseBridge** | Data sharing & IPC | `axonpulse/core/bridge.py` |
+| **NodeRegistry** | Node discovery | `axonpulse/nodes/registry.py` |
+| **FlowController** | Queueing & Branching | `axonpulse/core/flow_controller.py` |
+| **DependencyManager** | Hot Package install & lazy loading | `axonpulse/core/dependencies.py` |
+| **DataBuffer** | Large Data protection | `axonpulse/core/data.py` |
+| **TypeCaster** | Type validation & casting | `axonpulse/core/types.py` |
+| **ErrorObject** | Standardized error container | `axonpulse/core/data.py` |
+| **NamespaceGenerator** | Collision-safe worker naming | `axonpulse/utils/namespace.py` |
 
 ---
 
@@ -286,8 +286,8 @@ The `ParallelRunnerNode` enables batch parallel processing using Python's `multi
 
 Each worker runs in its own process with:
 
-- **Isolated Bridge**: Fresh `multiprocessing.Manager` + `SynapseBridge` — no shared state with parent.
-- **Scoped Name**: Unique `[Name]_[Index]_[4HexDigits]` identifier via `synapse/utils/namespace.py`.
+- **Isolated Bridge**: Fresh `multiprocessing.Manager` + `AxonPulseBridge` — no shared state with parent.
+- **Scoped Name**: Unique `[Name]_[Index]_[4HexDigits]` identifier via `axonpulse/utils/namespace.py`.
 - **Scoped Logger**: All console output prefixed with worker name (e.g., `[OCR_Worker_1_A2B3] Found text`).
 
 ### Worker Bootstrap
@@ -321,7 +321,7 @@ The Chunking system uses a **Provider-Strategy** pattern to allow dynamic text s
 
 ---
 
-## 🌐 Synapse Connectivity & Identity Architecture (SCIA)
+## 🌐 AxonPulse Connectivity & Identity Architecture (SCIA)
 
 SCIA is a protocol-agnostic framework for handling secure, multi-tenant connectivity.
 
@@ -351,11 +351,11 @@ All `ProviderNode` instances follow a standardized port order for predictable wi
 
 ## 🧪 Node Testing & Auditing
 
-Synapse VS includes a powerful **Interactive Node Auditor** located at `tools/audit_nodes.py`. It provides an isolated CLI Sandbox to execute and test nodes safely without booting the full UI.
+AxonPulse VS includes a powerful **Interactive Node Auditor** located at `tools/audit_nodes.py`. It provides an isolated CLI Sandbox to execute and test nodes safely without booting the full UI.
 
 ### 1. General Sandbox Execution
 
-By default, the Auditor will instantiate an isolated `ExecutionEngine` and `SynapseBridge`. It reads the node's `input_schema` and auto-prompts the developer for mock inputs via the terminal.
+By default, the Auditor will instantiate an isolated `ExecutionEngine` and `AxonPulseBridge`. It reads the node's `input_schema` and auto-prompts the developer for mock inputs via the terminal.
 
 - **Watchdog Protection**: Executions are wrapped in a 10-second watchdog thread. If a node infinite loops or a Native Thread blocks indefinitely, the Sandbox catches the hang and auto-fails the run without crashing the script.
 - **Provider Sub-Testing**: The Sandbox automatically detects nodes that require a Provider context. You cannot test these nodes on their own. Instead, testing a Provider Node directly will first start it, hold it alive, and recursively prompt to test any child node that depends on its connection!

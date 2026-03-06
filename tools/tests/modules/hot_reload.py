@@ -3,11 +3,11 @@ import sys
 import time
 import shutil
 
-# Ensure we can import synapse
+# Ensure we can import axonpulse
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
 from tools.tests.modules.base import setup_engine, load_registry
-from synapse.nodes.registry import NodeRegistry
+from axonpulse.nodes.registry import NodeRegistry
 
 def test_hot_reload_resilience():
     """
@@ -21,12 +21,12 @@ def test_hot_reload_resilience():
     load_registry()
     
     # Create a temporary node file
-    temp_node_path = os.path.abspath("synapse/nodes/lib/hot_swap_node.py")
+    temp_node_path = os.path.abspath("axonpulse/nodes/lib/hot_swap_node.py")
     
     initial_code = """
-from synapse.core.super_node import SuperNode
-from synapse.nodes.registry import NodeRegistry
-from synapse.core.types import DataType
+from axonpulse.core.super_node import SuperNode
+from axonpulse.nodes.registry import NodeRegistry
+from axonpulse.core.types import DataType
 
 @NodeRegistry.register("Hot Swap Node", "Test")
 class HotSwapNode(SuperNode):

@@ -1,6 +1,6 @@
-# Synapse VS: Power User Guide
+# AxonPulse VS: Power User Guide
 
-Welcome to the deep end. This guide covers advanced tricks, troubleshooting tips, and fun graph ideas to maximize your creativity with Synapse VS.
+Welcome to the deep end. This guide covers advanced tricks, troubleshooting tips, and fun graph ideas to maximize your creativity with AxonPulse VS.
 
 ## ⚡ Tricks & Tips
 
@@ -12,7 +12,7 @@ Want to see data flowing without breaking the connection?
 
 ### 2. Hot-Reloading SubGraphs
 
-Synapse caches SubGraphs for performance. If you edit a SubGraph file while the parent is running, it won't verify immediately.
+AxonPulse caches SubGraphs for performance. If you edit a SubGraph file while the parent is running, it won't verify immediately.
 
 - **Tip**: Toggle the **"Hot Reload"** property on the `SubGraph Node` (if available) or simply Stop and Start the parent graph to flush the cache.
 
@@ -34,7 +34,7 @@ Opened a graph and got the "Security Alert"?
 
 - **Tricks**:
   - **Audit**: Read the JSON file in a text editor to verify the command arguments.
-  - **Sandbox**: Run Synapse inside a VM if you test untrusted graphs frequently.
+  - **Sandbox**: Run AxonPulse inside a VM if you test untrusted graphs frequently.
 
 ### 6. Batch File Processing
 
@@ -60,7 +60,7 @@ The Browser and Search engines use "Magic" logic to resolve elements without fra
 > Use the **Miniworld** to jump between these complex logic blocks quickly.
 
 ---
-[Return to README](file:///f:/My%20Programs/Synapse%20VS/README.md)
+[Return to README](file:///f:/My%20Programs/AxonPulse%20VS/README.md)
 
 ### 8. Smart Switch Routing
 
@@ -124,7 +124,7 @@ Each URL is checked simultaneously — 3x faster than sequential!
 
 ### 10. Hot Packages (On-Demand Install)
 
-Synapse VS doesn't install every library upfront. The first time you use a node that needs an extra package, you'll see an **Install Dialog**.
+AxonPulse VS doesn't install every library upfront. The first time you use a node that needs an extra package, you'll see an **Install Dialog**.
 
 - **Tip**: Click **Yes** and it installs in seconds. The node will work immediately after.
 - **Pre-install**: If you want packages ready ahead of time, open a terminal in the SVS virtual environment and run `pip install <package>`.
@@ -134,7 +134,7 @@ Synapse VS doesn't install every library upfront. The first time you use a node 
 
 ### 11. The Provider System (Scoped Context)
 
-The **Provider System** is a cornerstone of advanced architecture in Synapse VS. It allows you to define global configurations (API keys, ports, file paths) that are "pushed" to all downstream nodes automatically.
+The **Provider System** is a cornerstone of advanced architecture in AxonPulse VS. It allows you to define global configurations (API keys, ports, file paths) that are "pushed" to all downstream nodes automatically.
 
 - **The Problem**: Wiring an "API Key" to 20 different AI nodes is messy and prone to errors.
 - **The Solution**: Use a **Provider Node** at the start of your flow.

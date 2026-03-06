@@ -1,4 +1,4 @@
-from synapse.nodes.registry import NodeRegistry
+from axonpulse.nodes.registry import NodeRegistry
 from .base import setup_engine
 
 def test_error_flows():

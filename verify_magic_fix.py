@@ -8,7 +8,7 @@ import logging
 sys.path.append(os.path.abspath(os.curdir))
 
 from playwright.sync_api import sync_playwright
-from synapse.nodes.browser.magic import MagicFinder
+from axonpulse.nodes.browser.magic import MagicFinder
 
 # Setup logging to see our new diagnostics
 logging.basicConfig(level=logging.INFO)

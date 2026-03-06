@@ -1,6 +1,6 @@
-# 🚀 Getting Started with Synapse VS
+# 🚀 Getting Started with AxonPulse VS
 
-Welcome to Synapse VS! Setting it up is quick and easy.
+Welcome to AxonPulse VS! Setting it up is quick and easy.
 
 ## 1. Prerequisites
 
@@ -10,8 +10,8 @@ You only need one thing:
 
 ## 2. Installation & Launch
 
-1. **Download** the Synapse VS folder to your computer.
-2. Find the file named `synapse.bat` (it might just look like `synapse`) and **double-click it**.
+1. **Download** the AxonPulse VS folder to your computer.
+2. Find the file named `axonpulse.bat` (it might just look like `axonpulse`) and **double-click it**.
 
 **That's it!** The first time you run it, SVS will ask you to choose an installation mode:
 
@@ -22,12 +22,12 @@ After selection, it will set up the virtual environment and launch the Architect
 
 ## 3. Basic Troubleshooting
 
-- **Script closes immediately?** Try right-clicking the folder background, selecting "Open in Terminal", and typing `./synapse.bat` to see what went wrong.
+- **Script closes immediately?** Try right-clicking the folder background, selecting "Open in Terminal", and typing `./axonpulse.bat` to see what went wrong.
 - **Missing Python?** If nothing happens, you likely need to install Python from the link above.
 
 ## 4. Optional Dependencies (Hot Packages)
 
- If you chose the **Minimal** installation, Synapse VS ships with only core dependencies. Everything else is installed **on-demand**.
+ If you chose the **Minimal** installation, AxonPulse VS ships with only core dependencies. Everything else is installed **on-demand**.
 
 - **How it works**: The first time you use a node that needs an extra library (like `opencv-python` or `flask`), a dialog will pop up asking if you'd like to install it.
 - **Click Yes**: SVS will download and install it automatically.
@@ -37,11 +37,11 @@ After selection, it will set up the virtual environment and launch the Architect
 
 ## Next Steps
 
-- Now that you're set up, check out the [UI Usage Guide](file:///f:/My%20Programs/Synapse%20VS/docs/UI_Usage.md) to learn how to navigate the Architect interface.
+- Now that you're set up, check out the [UI Usage Guide](file:///f:/My%20Programs/AxonPulse%20VS/docs/UI_Usage.md) to learn how to navigate the Architect interface.
 
 ---
-[Return to README](file:///f:/My%20Programs/Synapse%20VS/README.md)
+[Return to README](file:///f:/My%20Programs/AxonPulse%20VS/README.md)
 
-- See what the nodes do in the [Node Reference](file:///f:/My%20Programs/Synapse%20VS/docs/NodeList.md).
-- Advanced tricks and example graphs in the [Power User Guide](file:///f:/My%20Programs/Synapse%20VS/docs/PowerUser.md).
-- Developers can check the [Technical Guide](file:///f:/My%20Programs/Synapse%20VS/docs/developer.md).
+- See what the nodes do in the [Node Reference](file:///f:/My%20Programs/AxonPulse%20VS/docs/NodeList.md).
+- Advanced tricks and example graphs in the [Power User Guide](file:///f:/My%20Programs/AxonPulse%20VS/docs/PowerUser.md).
+- Developers can check the [Technical Guide](file:///f:/My%20Programs/AxonPulse%20VS/docs/developer.md).

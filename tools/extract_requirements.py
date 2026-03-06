@@ -47,13 +47,13 @@ def extract_requirements(syp_path):
         else:
             # Cross-reference node type with registered node files
             # The Engine uses NodeRegistry, but statically we can scan the nodes/ folder
-            # Simple heuristic: scan all node files in synapse/nodes for DependencyManager.ensure(...)
+            # Simple heuristic: scan all node files in axonpulse/nodes for DependencyManager.ensure(...)
             pass
             
     # Statically scan all standard python node files in the project
     # This acts as the "Master Core Requirements" + "Dynamic Node Requirements"
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    nodes_dir = os.path.join(project_root, "synapse", "nodes")
+    nodes_dir = os.path.join(project_root, "axonpulse", "nodes")
     
     # Regex to catch DependencyManager.ensure("package", "module")
     ensure_pattern = r'DependencyManager\.ensure\(\s*[\'"]([a-zA-Z0-9_\-]+)[\'"]'
@@ -80,7 +80,7 @@ def extract_requirements(syp_path):
     # Initialize Registry to exactly map used nodes to their requirements
     try:
         sys.path.append(project_root)
-        from synapse.nodes.registry import NodeRegistry
+        from axonpulse.nodes.registry import NodeRegistry
         
         # Map class names to module paths
         used_node_types = set([n.get("type") for n in data.get("nodes", [])])
@@ -88,7 +88,7 @@ def extract_requirements(syp_path):
         for n_type in used_node_types:
             cls = NodeRegistry.get_node_class(n_type)
             if cls:
-                module_name = cls.__module__ # e.g. synapse.nodes.media.camera
+                module_name = cls.__module__ # e.g. axonpulse.nodes.media.camera
                 # Convert module back to file path
                 filepath = os.path.join(project_root, module_name.replace('.', os.sep) + '.py')
                 if os.path.exists(filepath):
@@ -113,7 +113,7 @@ def extract_requirements(syp_path):
         print(f"Error writing to output file: {e}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extracts pip requirements from a Synapse .syp Graph.")
+    parser = argparse.ArgumentParser(description="Extracts pip requirements from a AxonPulse .syp Graph.")
     parser.add_argument("syp_file", help="Path to the .syp file.")
     args = parser.parse_args()
     

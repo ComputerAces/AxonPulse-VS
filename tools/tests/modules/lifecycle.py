@@ -1,8 +1,8 @@
 import time
 import threading
-from synapse.nodes.registry import NodeRegistry
-from synapse.nodes.lib.provider_node import ProviderNode
-from synapse.core.types import DataType
+from axonpulse.nodes.registry import NodeRegistry
+from axonpulse.nodes.lib.provider_node import ProviderNode
+from axonpulse.core.types import DataType
 from .base import setup_engine
 
 class TestWorkerProvider(ProviderNode):

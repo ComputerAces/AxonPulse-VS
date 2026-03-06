@@ -80,7 +80,7 @@ HTTP Server Provider (Flask). Launches a local web server to handle incoming net
 
 This node acts as a service provider, allowing other 'Flask Route' nodes to register endpoints 
 within its scope. It is the foundation for creating local REST APIs, webhooks, or simple 
-web interfaces directly within a Synapse graph.
+web interfaces directly within a AxonPulse graph.
 
 Inputs:
 - Flow: Trigger to start the server.

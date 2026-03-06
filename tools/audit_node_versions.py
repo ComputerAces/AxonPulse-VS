@@ -358,7 +358,7 @@ def audit_docs(nodes, docs_dir, init_v="1.0.0", sync=False, generate=False):
     return status_report
 
 if __name__ == "__main__":
-    node_lib = "synapse/nodes"
+    node_lib = "axonpulse/nodes"
     docs_nodes = "docs/nodes"
     
     do_sync = "--sync" in sys.argv

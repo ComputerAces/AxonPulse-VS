@@ -1,11 +1,11 @@
 import os
 import sys
 
-# Ensure we can import synapse
+# Ensure we can import axonpulse
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
 from tools.tests.modules.base import setup_engine, load_registry
-from synapse.nodes.registry import NodeRegistry
+from axonpulse.nodes.registry import NodeRegistry
 
 def test_type_casting_collision():
     """

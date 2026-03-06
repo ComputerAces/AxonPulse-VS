@@ -1,5 +1,5 @@
-from synapse.nodes.registry import NodeRegistry
-from synapse.core.types import DataType
+from axonpulse.nodes.registry import NodeRegistry
+from axonpulse.core.types import DataType
 from .base import setup_engine
 
 def test_subgraph_data_passing():
@@ -59,7 +59,7 @@ def test_subgraph_data_passing():
     # Actually, a SubGraph dynamically maps inputs to internal properties.
     mock_data = {
         "Var_Any": {"complex": "data"},
-        "Var_String": "Hello Synapse",
+        "Var_String": "Hello AxonPulse",
         "Var_Number": 42.5,
         "Var_Boolean": True,
         "Var_List": [1, 2, 3],

@@ -140,7 +140,7 @@ def generate_index(docs_dir, template_path):
     print(f"Generated Index.md with {len(categories)} root categories.")
 
 if __name__ == "__main__":
-    node_lib = "synapse/nodes"
+    node_lib = "axonpulse/nodes"
     docs_nodes = "docs/nodes"
     template = "doc_base/index.md"
     

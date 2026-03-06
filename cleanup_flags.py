@@ -1,6 +1,6 @@
 import re
 
-path = r'f:\My Programs\Synapse VS\synapse\nodes\browser\actions.py'
+path = r'f:\My Programs\AxonPulse VS\axonpulse\nodes\browser\actions.py'
 with open(path, 'r', encoding='utf-8') as f:
     content = f.read()
 

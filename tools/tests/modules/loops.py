@@ -1,4 +1,4 @@
-from synapse.nodes.registry import NodeRegistry
+from axonpulse.nodes.registry import NodeRegistry
 from .base import setup_engine, load_registry
 
 def test_while_loop_completion():

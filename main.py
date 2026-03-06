@@ -1,23 +1,23 @@
 import multiprocessing
 import sys
 import json
-from synapse.core.bridge import SynapseBridge
-from synapse.core.engine import ExecutionEngine
-import synapse.nodes # Triggers auto-discovery
-from synapse.nodes.registry import NodeRegistry
-from synapse.core.loader import load_graph_from_file, load_favorites_into_registry
-from synapse.utils.logger import main_logger as logger
+from axonpulse.core.bridge import AxonPulseBridge
+from axonpulse.core.engine import ExecutionEngine
+import axonpulse.nodes # Triggers auto-discovery
+from axonpulse.nodes.registry import NodeRegistry
+from axonpulse.core.loader import load_graph_from_file, load_favorites_into_registry
+from axonpulse.utils.logger import main_logger as logger
 
 def main():
-    logger.info("Initializing Synapse VS (SVS) - Production Mode...")
+    logger.info("Initializing AxonPulse VS (SVS) - Production Mode...")
     
     # 0. Global Signal & Exception Handlers
-    from synapse.utils.cleanup import init_global_handlers
+    from axonpulse.utils.cleanup import init_global_handlers
     init_global_handlers()
 
     # 1. Setup Bridge
     manager = multiprocessing.Manager()
-    bridge = SynapseBridge(manager)
+    bridge = AxonPulseBridge(manager)
 
     # 2. Parse Args
     import argparse
@@ -64,7 +64,7 @@ def main():
             
             should_save = False
             if is_interactive:
-                from synapse.core.cli_forms import render_form_cli
+                from axonpulse.core.cli_forms import render_form_cli
                 schema = [{"label": "Save Changes", "type": "boolean", "default": "y"}]
                 result = render_form_cli("Repair & Migration", schema)
                 should_save = result.get("Save Changes")
@@ -73,7 +73,7 @@ def main():
                 should_save = True
 
             if should_save:
-                from synapse.utils.file_utils import safe_save_graph
+                from axonpulse.utils.file_utils import safe_save_graph
                 if safe_save_graph(json_path, data):
                     logger.info(f"Successfully saved fixed graph to {json_path}")
                 else:

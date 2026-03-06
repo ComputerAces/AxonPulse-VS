@@ -1,6 +1,6 @@
-# 🎨 How to Use Synapse VS
+# 🎨 How to Use AxonPulse VS
 
-Synapse VS Architect is your creative workspace for building automated workflows. Here’s a quick guide to getting around.
+AxonPulse VS Architect is your creative workspace for building automated workflows. Here’s a quick guide to getting around.
 
 ## 🖱️ Navigating the Canvas
 
@@ -21,7 +21,7 @@ This is where you build your graphs.
 
 ## ⚡ Advanced Flow Design
 
-Synapse VS allows for complex, multi-threaded logic through its flexible wiring system:
+AxonPulse VS allows for complex, multi-threaded logic through its flexible wiring system:
 
 - **Branching (Split Tasks)**: You can hook a single **Flow Output** into multiple different paths. This "splits" the execution, allowing multiple tasks to run in parallel.
 - **Merging (Join Tasks)**: A single **Flow Input** can accept wires from multiple different output ports. This is useful for creating consolidated join points or "multi-trigger" nodes.
@@ -68,7 +68,7 @@ Frames allow you to group related nodes together visually.
 - **Hot-Reloading**: Subgraphs update instantly when the source `.syp` file is saved.
 
 ---
-[Return to README](file:///f:/My%20Programs/Synapse%20VS/README.md)
+[Return to README](file:///f:/My%20Programs/AxonPulse%20VS/README.md)
 
 - **Move**: Drag the frame header to move all nodes inside it.
 - **Color**: Right-click the header to change the frame color.

@@ -1,6 +1,6 @@
-# Synapse VS (SVS) - Visual Scripting
+# AxonPulse VS (SVS) - Visual Scripting
 
-**Synapse VS (Visual Script)** is a powerful, node-based automation and data processing platform. It allows users to build complex workflows using a visual interface, combining AI, system operations, and data transformations into cohesive "graphs".
+**AxonPulse VS (Visual Script)** is a powerful, node-based automation and data processing platform. It allows users to build complex workflows using a visual interface, combining AI, system operations, and data transformations into cohesive "graphs".
 
 ## 🚀 Key Features
 
@@ -26,7 +26,7 @@
 
 ### The Architect UI
 
-<img src="media/images/Screenshot_Base.png" width="800" alt="Synapse VS Architect Base UI">
+<img src="media/images/Screenshot_Base.png" width="800" alt="AxonPulse VS Architect Base UI">
 
 The **Architect** is the primary workspace for building and debugging graphs. It consists of several key areas:
 
@@ -38,7 +38,7 @@ The **Architect** is the primary workspace for building and debugging graphs. It
 
 ### Minimap Navigation
 
-<img src="media/images/Screenshot_Minimap.png" width="400" alt="Synapse VS Minimap">
+<img src="media/images/Screenshot_Minimap.png" width="400" alt="AxonPulse VS Minimap">
 
 The **Minimap** provides a high-level bird's-eye view of your entire graph. It allows for rapid navigation through large, complex logic flows by clicking or dragging the view rectangle.
 
@@ -47,7 +47,7 @@ The **Minimap** provides a high-level bird's-eye view of your entire graph. It a
 
 ### Miniworld: Mission Control
 
-<img src="media/images/Screenshot_Miniworld.png" width="400" alt="Synapse VS Miniworld">
+<img src="media/images/Screenshot_Miniworld.png" width="400" alt="AxonPulse VS Miniworld">
 
 The **Miniworld** is a unique multi-viewport system that allows you to monitor up to 6 different graphs or subgraph instances simultaneously. Each slot provides a live preview of execution, making it the central "mission control" for complex, interconnected automation systems.
 
@@ -55,8 +55,8 @@ The **Miniworld** is a unique multi-viewport system that allows you to monitor u
 
 ### 1. Installation
 
-1. **Clone the Repo**: `git clone https://github.com/Antigravity-Team/SynapseVS.git`
-2. **Run**: Double-click `synapse.bat` (Windows) or run `python synapse.py` (Linux/Mac).
+1. **Clone the Repo**: `git clone https://github.com/Antigravity-Team/AxonPulseVS.git`
+2. **Run**: Double-click `axonpulse.bat` (Windows) or run `python axonpulse.py` (Linux/Mac).
     * *Note: First run will prompt you to choose between **Minimal** (online hot-loading) or **Full** (offline capable) installation.*
 
 ### 2. Hello World
@@ -97,7 +97,7 @@ For detailed guides, check the `docs/` folder:
 
 ## 💬 Community
 
-* [Discussion Board](https://github.com/ComputerAces/Synapse-VS/discussions) - Ask questions, share ideas, and get help from the community.
+* [Discussion Board](https://github.com/ComputerAces/AxonPulse-VS/discussions) - Ask questions, share ideas, and get help from the community.
 
 ## ⚖️ License
 

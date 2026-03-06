@@ -2,12 +2,12 @@ import sys
 import os
 import time
 
-# Ensure we can import synapse
+# Ensure we can import axonpulse
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
-from synapse.core.bridge import SynapseBridge
-from synapse.core.engine.execution_engine import ExecutionEngine
-from synapse.nodes.registry import NodeRegistry
+from axonpulse.core.bridge import AxonPulseBridge
+from axonpulse.core.engine.execution_engine import ExecutionEngine
+from axonpulse.nodes.registry import NodeRegistry
 
 import multiprocessing
 
@@ -29,11 +29,11 @@ def setup_engine(test_name):
     print(f"{'='*50}")
     
     # Prevent the global cleanup manager from nuking our Singleton Manager background process
-    from synapse.utils.cleanup import CleanupManager
+    from axonpulse.utils.cleanup import CleanupManager
     CleanupManager.cleanup_all = _mock_cleanup_all
     
     manager = get_shared_manager()
-    bridge = SynapseBridge(manager)
+    bridge = AxonPulseBridge(manager)
     # Suppress verbose trace logs in headless mode
     engine = ExecutionEngine(bridge, headless=True, trace=False)
     bridge.save_state = _mock_save_state
@@ -51,13 +51,13 @@ def load_registry():
     """Initializes the node backend."""
     import glob
     # We must load python files dynamically since NodeRegistry.load_nodes might not exist universally if not using loader
-    nodes_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'synapse', 'nodes', 'lib'))
+    nodes_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'axonpulse', 'nodes', 'lib'))
     sys.path.insert(0, os.path.dirname(nodes_dir))
     
     # Find all Python files in the directory
     for filepath in glob.glob(os.path.join(nodes_dir, "*.py")):
         if not os.path.basename(filepath).startswith("__"):
-             module_name = f"synapse.nodes.lib.{os.path.basename(filepath)[:-3]}"
+             module_name = f"axonpulse.nodes.lib.{os.path.basename(filepath)[:-3]}"
              try:
                  __import__(module_name)
              except Exception as e:

@@ -12,10 +12,10 @@ try:
 except ImportError:
     msvcrt = None
 
-from synapse.core.types import DataType
-from synapse.core.bridge import SynapseBridge
-from synapse.core.engine.execution_engine import ExecutionEngine
-from synapse.nodes.registry import NodeRegistry
+from axonpulse.core.types import DataType
+from axonpulse.core.bridge import AxonPulseBridge
+from axonpulse.core.engine.execution_engine import ExecutionEngine
+from axonpulse.nodes.registry import NodeRegistry
 from .utils import Colors, DummyBridge, requires_provider
 
 def execute_custom_test(custom_module_name, namespaced_id, node_cls, is_os_mode):
@@ -49,7 +49,7 @@ def run_sandbox(namespaced_id, node_cls, is_os_mode=False, render_cb=None):
     # Generic Fallback Sandbox
     print(f"\n{Colors.CYAN}--- LIVE ENGINE SANDBOX [{namespaced_id}] ---{Colors.RESET}")
     manager = multiprocessing.Manager()
-    bridge = SynapseBridge(manager)
+    bridge = AxonPulseBridge(manager)
     engine = ExecutionEngine(bridge)
     
     # Mock Hijack for Sandbox Dispatcher testing
@@ -59,8 +59,8 @@ def run_sandbox(namespaced_id, node_cls, is_os_mode=False, render_cb=None):
     node = node_cls("sand_1", node_name, bridge)
     engine.register_node(node)
     
-    from synapse.nodes.lib.start_node import StartNode
-    from synapse.nodes.lib.return_node import ReturnNode
+    from axonpulse.nodes.lib.start_node import StartNode
+    from axonpulse.nodes.lib.return_node import ReturnNode
     
     is_prov = hasattr(node, 'cleanup_provider_context')
     is_start = isinstance(node, StartNode)
@@ -141,7 +141,7 @@ def run_sandbox(namespaced_id, node_cls, is_os_mode=False, render_cb=None):
             else:
                 disp = getattr(engine, 'dispatcher', None)
                 if not disp:
-                    from synapse.core.node_dispatcher import NodeDispatcher
+                    from axonpulse.core.node_dispatcher import NodeDispatcher
                     disp = NodeDispatcher(bridge)
                     engine.dispatcher = disp
                     
@@ -347,7 +347,7 @@ def _run_sub_sandbox(namespaced_id, node_cls, engine, bridge, provided_data):
     result = {"status": "Pending"}
     def _sub_sandbox_run():
         try:
-            from synapse.core.node_dispatcher import NodeDispatcher
+            from axonpulse.core.node_dispatcher import NodeDispatcher
             disp = NodeDispatcher(engine)
             res = disp.dispatch(node, mock_inputs, [])
             if hasattr(res, 'wait'): res.wait()

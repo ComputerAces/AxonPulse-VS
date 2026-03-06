@@ -1,6 +1,6 @@
 import time
-from synapse.core.bridge import SynapseBridge
-from synapse.core.engine import ExecutionEngine
+from axonpulse.core.bridge import AxonPulseBridge
+from axonpulse.core.engine import ExecutionEngine
 from .base import setup_engine, get_shared_manager
 
 def test_scope_bleed():
@@ -13,9 +13,9 @@ def test_scope_bleed():
     
     # We want to test if two bridges sharing the same registry stay isolated
     # We manually inject the shared registry to simulate a single engine database
-    bridgeA = SynapseBridge(manager)
+    bridgeA = AxonPulseBridge(manager)
     bridgeA._variables_registry = shared_registry
-    bridgeB = SynapseBridge(manager)
+    bridgeB = AxonPulseBridge(manager)
     bridgeB._variables_registry = shared_registry
     
     # Initialize Engines with different "Source Files" to trigger automatic scoping

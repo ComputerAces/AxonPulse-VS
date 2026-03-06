@@ -2,7 +2,7 @@ import os
 import sys
 import time
 
-# Ensure we can import synapse
+# Ensure we can import axonpulse
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
 from tools.tests.modules.base import setup_engine, load_registry

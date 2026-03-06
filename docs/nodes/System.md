@@ -238,7 +238,7 @@ Manages operating system environment variables (e.g., PATH, HOME).
 
 This node can retrieve (Get), set (Set), or delete (Unset) environment 
 variables. Setting a variable makes it available to the current process 
-and any child processes spawned by Synapse.
+and any child processes spawned by AxonPulse.
 
 Inputs:
 - Flow: Trigger the operation.
@@ -448,7 +448,7 @@ Outputs:
 **Version**: `2.1.0`
 
 Captures the current system date and time.
-Returns the timestamp in a standardized format inside Synapse tags.
+Returns the timestamp in a standardized format inside AxonPulse tags.
 
 Inputs:
 - Flow: Trigger the time capture.
@@ -576,7 +576,7 @@ Requires administrative permissions for some HKEY_LOCAL_MACHINE operations.
 
 Inputs:
 - Flow: Trigger the registry operation.
-- Key Path: The full registry path (e.g., HKEY_CURRENT_USER\Software\Synapse).
+- Key Path: The full registry path (e.g., HKEY_CURRENT_USER\Software\AxonPulse).
 - Value Name: The name of the registry value to target.
 - Value Data: The data to write (used for Write Key action).
 - Action: 'Write' or 'Delete' (Default: Write).

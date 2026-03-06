@@ -2,11 +2,11 @@ import os
 import sys
 import time
 
-# Ensure we can import synapse
+# Ensure we can import axonpulse
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
 from tools.tests.modules.base import setup_engine, load_registry
-from synapse.nodes.registry import NodeRegistry
+from axonpulse.nodes.registry import NodeRegistry
 
 def test_injection_sandbox():
     """
@@ -42,7 +42,7 @@ def test_injection_sandbox():
     sql_node = SQLExecuteCls("sql_1", "SQL", bridge)
     sql_node.properties["Command"] = "DROP TABLE users; --"
     sql_node.properties["Connection"] = "db_p" # Link to provider
-    from synapse.nodes.database.sqlite_provider import SQLiteProviderNode
+    from axonpulse.nodes.database.sqlite_provider import SQLiteProviderNode
     db_prov = SQLiteProviderNode("db_p", "Database", bridge)
     db_prov.properties["DatabasePath"] = ":memory:"
     engine.register_node(db_prov)

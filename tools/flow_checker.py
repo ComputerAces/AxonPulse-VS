@@ -1,11 +1,11 @@
 import os
 import sys
 
-# Ensure we can import synapse and tests
+# Ensure we can import axonpulse and tests
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-from synapse.nodes.registry import NodeRegistry
+from axonpulse.nodes.registry import NodeRegistry
 from tests.modules.base import load_registry
 from tests.modules.linear import test_linear_flow
 from tests.modules.loops import test_while_loop_completion, test_while_loop_break
@@ -24,7 +24,7 @@ from tools.tests.modules.hot_reload import test_hot_reload_resilience
 from tools.tests.modules.resilience import test_api_backpressure
 
 if __name__ == "__main__":
-    print(f"\nScanning Synapse Node Library...")
+    print(f"\nScanning AxonPulse Node Library...")
     # Using our custom loader from base.py since we don't have standard Graph loaders running
     load_registry()
     print(f"Loaded {len(NodeRegistry._nodes)} node definitions.\n")

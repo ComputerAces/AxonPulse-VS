@@ -10,9 +10,9 @@ try:
 except ImportError:
     msvcrt = None
 
-from synapse.nodes.registry import NodeRegistry
-from synapse.utils.cleanup import CleanupManager
-from synapse.core.types import DataType
+from axonpulse.nodes.registry import NodeRegistry
+from axonpulse.utils.cleanup import CleanupManager
+from axonpulse.core.types import DataType
 
 from .utils import Colors, DummyBridge, requires_provider
 from .static_checks import run_pre_flight_check
@@ -346,7 +346,7 @@ class NodeAuditor:
             return False
 
     def _load_registry(self):
-        nodes_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'synapse', 'nodes'))
+        nodes_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'axonpulse', 'nodes'))
         for root, _, files in os.walk(nodes_dir):
             for f in files:
                  if f.endswith('.py') and not f.startswith('__'):
@@ -613,7 +613,7 @@ class NodeAuditor:
              print("No nodes registered.")
              return
              
-         print(f"{Colors.CYAN}--- SYNAPSE NODE LIBRARY ({total} Nodes) ---{Colors.RESET}")
+         print(f"{Colors.CYAN}--- AXONPULSE NODE LIBRARY ({total} Nodes) ---{Colors.RESET}")
          chunk_size = 15
          for i in range(0, total, chunk_size):
              chunk = all_nodes[i : i + chunk_size]

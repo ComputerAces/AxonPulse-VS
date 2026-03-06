@@ -145,7 +145,7 @@
             "pos_x": -1657.4467752157125,
             "pos_y": -198.72814214045638,
             "properties": {
-                "JSON Path": "F:\\My Programs\\Synapse VS\\sub_graphs\\Bot\\data\\bots.json",
+                "JSON Path": "F:\\My Programs\\AxonPulse VS\\sub_graphs\\Bot\\data\\bots.json",
                 "Add Root Key": "\"bots\" : {}",
                 "Additional Outputs": [
                     "JSON Path",

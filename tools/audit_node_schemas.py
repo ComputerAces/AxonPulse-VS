@@ -8,9 +8,9 @@ import re
 # Setup paths
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from synapse.nodes.registry import NodeRegistry
-from synapse.core.bridge import SynapseBridge
-from synapse.utils.cleanup import CleanupManager
+from axonpulse.nodes.registry import NodeRegistry
+from axonpulse.core.bridge import AxonPulseBridge
+from axonpulse.utils.cleanup import CleanupManager
 
 # Prevent cleanup manager from closing our process
 CleanupManager.cleanup_all = lambda: None
@@ -23,10 +23,10 @@ NAMING_PATTERN = re.compile(r'^[A-Z][a-zA-Z0-9]*(\s+[A-Z0-9][a-zA-Z0-9\(\)%]*)*$
 
 def audit_node_schemas():
     manager = multiprocessing.Manager()
-    bridge = SynapseBridge(manager)
+    bridge = AxonPulseBridge(manager)
     
     # Dynamically load all node classes
-    nodes_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'synapse', 'nodes'))
+    nodes_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'axonpulse', 'nodes'))
     for root, _, files in os.walk(nodes_dir):
         for f in files:
              if f.endswith('.py') and not f.startswith('__'):
@@ -119,7 +119,7 @@ def audit_node_schemas():
                             # Use string comparison to avoid issues with imported base classes if necessary,
                             # but direct class check is safer.
                             try:
-                                from synapse.nodes.base_node import BaseNode
+                                from axonpulse.nodes.base_node import BaseNode
                                 if not issubclass(obj, BaseNode):
                                     if not name.startswith("_"):
                                         violations.append(f"Pickling Risk: Local class '{name}' defined in module. Use core types or external utilities.")

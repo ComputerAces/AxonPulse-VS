@@ -11,7 +11,7 @@ from tools.auditor.core import NodeAuditor
 if __name__ == "__main__":
     multiprocessing.freeze_support()
     parser = argparse.ArgumentParser(
-        description="Interactive Sandbox Validator & CLI Test Engine for Synapse VS Node Library.",
+        description="Interactive Sandbox Validator & CLI Test Engine for AxonPulse VS Node Library.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

@@ -4,11 +4,11 @@ import random
 import os
 import sys
 
-# Ensure we can import synapse
+# Ensure we can import axonpulse
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
 from tools.tests.modules.base import get_shared_manager, setup_engine
-from synapse.core.bridge import SynapseBridge
+from axonpulse.core.bridge import AxonPulseBridge
 
 def test_concurrency_blast():
     """
@@ -19,7 +19,7 @@ def test_concurrency_blast():
     print(f"{'='*50}")
     
     manager = get_shared_manager()
-    bridge = SynapseBridge(manager)
+    bridge = AxonPulseBridge(manager)
     
     NUM_ITERATIONS = 10000
     CONCURRENT_THREADS = 50 # Simulate high worker pool pressure
@@ -64,7 +64,7 @@ def test_heavy_payload():
     print(f"{'='*50}")
     
     manager = get_shared_manager()
-    bridge = SynapseBridge(manager)
+    bridge = AxonPulseBridge(manager)
     
     # Create ~20MB of dummy data (Nested dict with strings)
     print(f"    [Action] Generating 20MB payload...")
