@@ -20,6 +20,7 @@ Welcome to the Node Reference. AxonPulse VS features over 100+ native nodes cate
 - [Network](Network.md)
 - [Security](Security.md)
 - [System](System.md)
+- [Text](Text.md)
 - [UI](UI.md)
 - [Workflow](Workflow.md)
 

@@ -616,6 +616,24 @@ Outputs:
 
 ## 📂 Lists
 
+### List Add Item
+
+**Version**: `1.0.0`
+
+Appends one or more items to a list. Supports dynamically adding multiple input pins.
+
+Inputs:
+- Flow: Execution trigger.
+- List: The base list to add items to (starts empty if not provided).
+- [Dynamic Inputs]: Add items via the Node's visual context menu.
+
+Outputs:
+- Flow: Triggered after the items are added.
+- Result: The updated list.
+- Count: The length of the updated list.
+
+---
+
 ### List Count
 
 **Version**: `2.1.0`
@@ -972,6 +990,40 @@ Inputs:
 Outputs:
 - Flow: Triggered after the injection is complete.
 - Result: The formatted string with placeholders replaced.
+
+---
+
+### Text To Unicode
+
+**Version**: `2.1.0`
+
+Converts standard readable text into a string containing literal escaped unicode sequences.
+
+Inputs:
+- Flow: Execution trigger.
+- Text: The standard human-readable string.
+
+Outputs:
+- Flow: Triggered after conversion.
+- Error Flow: Triggered if conversion fails.
+- Result: The string containing literal unicode escapes.
+
+---
+
+### Unicode To Text
+
+**Version**: `2.1.0`
+
+Converts a string containing literal escaped unicode sequences (e.g. \\u00a0) into standard readable text.
+
+Inputs:
+- Flow: Execution trigger.
+- Text: The string containing escaped unicode sequences.
+
+Outputs:
+- Flow: Triggered after conversion.
+- Error Flow: Triggered if conversion fails.
+- Result: The decoded, human-readable string.
 
 ---
 

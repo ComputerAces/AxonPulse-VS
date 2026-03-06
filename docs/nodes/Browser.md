@@ -64,9 +64,24 @@ Inputs:
 
 Outputs:
 - Flow: Triggered after search.
-- Found: True if a match was found.
 - Value: The actual text or value of the element.
 - Path: The formal XPath of the resolved element.
+
+---
+
+### Browser Element Attributes
+
+**Version**: `2.0.0`
+
+Returns all attributes of a specific element as a dictionary.
+
+### Inputs:
+- Flow (flow): Trigger the action.
+- Selector (string): Target element path/selector.
+
+### Outputs:
+- Flow (flow): Triggered after extraction.
+- Attributes (any): Dictionary of {name: value}.
 
 ---
 
@@ -237,6 +252,27 @@ Extracts text, HTML, or attributes from elements on the page.
 ### Outputs:
 - Flow (flow): Triggered after extraction.
 - Data (any): The extracted string or list of strings.
+- Count (integer): Number of elements found.
+
+---
+
+### Browser Strip Elements
+
+**Version**: `2.2.0`
+
+Extracts all elements of a specific type (e.g., 'table', 'tr', 'div') and returns 
+their full XPaths and inner text as a dictionary.
+
+### Inputs:
+- Flow (flow): Trigger the extraction.
+- Element Type (string): The HTML tag name to look for (e.g., 'table', 'li', 'a').
+- Include Children (boolean): If True, recursively extracts all descendants of found elements.
+- Wait Until (string): Optional wait condition ('load', 'domcontentloaded', 'networkidle').
+- Timeout (number): Max time (ms) to wait for condition.
+
+### Outputs:
+- Flow (flow): Triggered after extraction.
+- Data (list): A list of hierarchical paths (dot-notation).
 - Count (integer): Number of elements found.
 
 ---

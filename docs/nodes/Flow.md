@@ -180,38 +180,22 @@ Outputs:
 
 **Version**: `2.1.0`
 
-Standardized service for listening to global system events.
+Standardized service for listening to global system events within an ongoing Sub-Flow.
 Supports Keyboard Hotkeys, Time Intervals (Timers), and scheduled Date/Time events.
-Must be 'Armed' to start listening and 'Disarmed' to stop.
+When an event fires, it branches its execution to 'Triggered'. Once that branch finishes, 
+it returns to this node ('Continue') to wait for the next occurrence.
 
 Inputs:
-- Arm: Start the background listener.
-- Disarm: Stop the background listener.
+- Arm: Start the background listener sequence.
+- Disarm: Stop the background listener and exit the sub-flow.
+- End: Force kill the underlying thread immediately.
 - Value: The trigger configuration (Hotkey string, time interval, or ISO date).
 - Trigger Type: The mode of detection (Keyboard, Timer, Date, Time).
 
 Outputs:
-- Flow: Triggered when armed/disarmed.
-- Trigger: Pulse fired when the event occurs.
-- Stop: Pulse fired when disarmed.
-
----
-
-### Exit Trigger
-
-**Version**: `2.1.0`
-
-Deactivates a persistent signal (Tag) set by a 'Trigger' node.
-
-When flow reaches this node, the state associated with the specified 'Tag' 
-is set to False. This can be used to stop execution branches or reset latches.
-
-Inputs:
-- Flow: Trigger the deactivation signal.
-- Tag: The unique identifier of the trigger to deactivate.
-
-Outputs:
-- Flow: Pulse triggered after the signal is dispatched.
+- Flow: Fired when explicitly stopped/disarmed.
+- Triggered: Pulse fired each time the event occurs.
+- Index: The amount of times the event has fired so far.
 
 ---
 
@@ -228,26 +212,6 @@ Inputs:
 
 Outputs:
 - Flow: Triggered after the signal is sent.
-
----
-
-### Trigger
-
-**Version**: `2.1.0`
-
-Sets a persistent signal (Tag) that can be checked or used to release other branches.
-
-This node acts like a digital latch. When triggered via 'Flow', it sets the state 
-associated with 'Tag' to True. This state remains until manually deactivated via 
-the 'Stop' input or an 'Exit Trigger' node.
-
-Inputs:
-- Flow: Set the trigger state to True.
-- Stop: Deactivate the trigger (Set state to False).
-- Tag: Unique identifier for this trigger state.
-
-Outputs:
-- Flow: Pulse triggered after activation.
 
 ---
 
