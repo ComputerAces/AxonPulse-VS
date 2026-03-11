@@ -6,24 +6,120 @@ This document covers nodes within the **Media** core category.
 
 ### Audio Record
 
-**Version**: `2.1.0`
+**Version**: `2.2.0`
 
 Captures live audio from the system's default input device and saves it to a WAV file.
 Operates as a Provider Node, establishing an audio recording scope.
 Supports intelligent auto-stop based on silence detection for hands-free operation.
+**Improved Internal Logic**: The `_calculate_rms` method now automatically handles the normalization, ensuring that `1.0` represents absolute peak signal level.
+
+## Audio Record Configuration Expansion
+
+I've expanded the "Audio Record" node with professional-grade configuration options for high-fidelity recording.
+
+### Key Changes
+
+- **Configurable Sample Rate**: Added a `Sample Rate` input supporting standard frequencies (44100Hz, 48000Hz, etc.).
+- **Stereo Support**: Added a `Channels` input to switch between Mono (1) and Stereo (2) recording.
+- **Improved Logging**: The node now reports the exact recording parameters (Rate, Channels, Filename) upon starting.
+- **Robust Persistence**: Updated the WAV saving logic to respect dynamic channel and sample rate settings, ensuring zero-corruption exports.
 
 Inputs:
+
 - Flow: Start the recording and enter the Audio Provider scope.
 - Provider End: Manually stop the recording and exit the scope.
 - File Name: The destination path for the recorded .wav file (default: 'recording.wav').
 - Use Silence Exit: If True, automatically stops recording after sustained silence.
-- Silence Level: Sensitivity threshold for silence detection (higher = more sensitive).
+- Silence Level: Sensitivity threshold for silence detection (**0.0 to 1.0**, where 1.0 is full level. Legacy values > 1.0 are automatically normalized).
+- Silence Length: The duration (in seconds) of sustained silence required to trigger an automatic stop (default: 2.0).
+- Sample Rate: Audio sampling frequency (e.g., 44100, 48000, 16000).
+- Channels: Number of audio channels (1 for Mono, 2 for Stereo).
+- Input Device: Integer index of the hardware device (default -1 for system default).
 
 Outputs:
-- Flow: Triggered after the recording is successfully stopped and saved.
+
+- Flow: Triggered after a valid recording (>= 1.0s and containing sound) is successfully stopped and saved.
+- No Data: Triggered if the recording is less than 1.0s OR if `Use Silence Exit` is on and no sound exceeding the `Silence Level` was detected.
 - Wav Data: A WavObject containing the file path and metadata for the final recording.
 - Provider Flow: Active while the microphone is recording.
 - Provider ID: Unique identifier for this specific recording session.
+
+---
+
+### Listen
+
+**Version**: `2.2.0`
+
+Transcribes audio to text using a registered STT Provider (OS, Vosk, or Whisper).
+
+Acts as a consumer node that sends audio data (WavObject, bytes, or absolute path)
+to the active STT engine and returns the resulting transcription.
+
+Inputs:
+
+- Flow: Trigger the transcription.
+- Audio Data: The audio source (WavObject, bytes, or absolute path).
+
+Outputs:
+
+- Flow: Pulse triggered after transcription completion.
+- Text: The recognized text string.
+
+---
+
+### STT OS Provider
+
+**Version**: `2.2.0`
+
+Registers the default system/OS Speech-To-Text provider.
+Uses the 'SpeechRecognition' library which acts as a wrapper for Various APIs.
+By default, uses Google Web Speech API (requires internet).
+
+Inputs:
+
+- Flow: Start Provider Scope.
+- Language: BCP-47 language tag (default: 'en-US').
+
+Outputs:
+
+- Done: Pulse triggered once the engine is ready.
+
+---
+
+### STT Vosk Provider
+
+**Version**: `2.2.0`
+
+Registers the Vosk Speech-To-Text provider for high-speed offline transcription.
+Automatically downloads the ~50MB English model on first use.
+
+Inputs:
+
+- Flow: Start Provider Scope.
+- Model Name: Vosk model to use (default: 'vosk-model-small-en-us-0.15').
+
+Outputs:
+
+- Done: Pulse triggered once the engine is ready.
+
+---
+
+### STT Whisper Provider
+
+**Version**: `2.2.0`
+
+Registers the Whisper Speech-To-Text provider for high-accuracy transcription.
+Uses 'faster-whisper' for optimized CPU/GPU execution.
+
+Inputs:
+
+- Flow: Start Provider Scope.
+- Model Size: Whisper model size (tiny, base, small, medium, large-v3). Default: 'tiny'.
+- Device: Execution device (cpu, cuda). Default: 'cpu'.
+
+Outputs:
+
+- Done: Pulse triggered once the engine is ready.
 
 ---
 
@@ -33,11 +129,12 @@ Outputs:
 
 Registers the KaniTTS-2 engine for speech synthesis.
 
-Initializes a provider context for KaniTTS-2, which supports high-quality 
-voice cloning. Other 'Speak' nodes can use this provider by specifying 
+Initializes a provider context for KaniTTS-2, which supports high-quality
+voice cloning. Other 'Speak' nodes can use this provider by specifying
 the 'TTS Provider' relationship.
 
 Inputs:
+
 - Flow: Trigger the provider initialization.
 - Model: The HuggingFace model ID or local path for KaniTTS.
 - Temperature: Generation temperature (default 1.0).
@@ -45,6 +142,7 @@ Inputs:
 - Repetition Penalty: Penalty for repeating tokens (default 1.1).
 
 Outputs:
+
 - Done: Pulse triggered once the engine is ready.
 
 ---
@@ -55,15 +153,17 @@ Outputs:
 
 Registers the Parler-TTS engine for speech synthesis.
 
-Initializes a provider context for Parler-TTS, which generates 
+Initializes a provider context for Parler-TTS, which generates
 highly expressive speech based on text descriptions.
 
 Inputs:
+
 - Flow: Trigger the provider initialization.
 - Model: The HuggingFace model ID for Parler-TTS.
 - Description: Natural language description of the target voice.
 
 Outputs:
+
 - Done: Pulse triggered once the engine is ready.
 
 ---
@@ -74,16 +174,18 @@ Outputs:
 
 Synthesizes speech from text using a registered TTS Provider.
 
-Acts as a consumer node that sends text to a 'TTS System', 'Parler', 
+Acts as a consumer node that sends text to a 'TTS System', 'Parler',
 or 'KaniTTS' engine and returns the resulting audio data.
 
 Inputs:
+
 - Flow: Trigger the synthesis.
 - Text: The text string to speak.
 - Voice Reference: Optional audio sample or embedding for voice cloning.
 - Save Path: Optional file path to save the resulting .wav file.
 
 Outputs:
+
 - Flow: Pulse triggered after synthesis completion.
 - Audio: Raw audio data or numpy array.
 - Sample Rate: The sample rate of the generated audio.
@@ -97,16 +199,18 @@ Outputs:
 Registers the system's native Text-to-Speech engine.
 
 Initializes a provider context using pyttsx3. This engine is cross-platform
-and does not require an internet connection. Other 'Speak' nodes use 
+and does not require an internet connection. Other 'Speak' nodes use
 this provider to synthesize audio.
 
 Inputs:
+
 - Flow: Trigger the provider initialization.
 - Rate: Speech rate in words per minute (default 200).
 - Volume: Speech volume from 0.0 to 1.0 (default 1.0).
 - VoiceIndex: Index of the system voice to use (default 0).
 
 Outputs:
+
 - Done: Pulse triggered once the engine is ready.
 
 ---
@@ -121,10 +225,12 @@ Outputs a fixed color value.
 Supports RGBA hex strings (e.g., "#800080FF") and manages the color data type.
 
 Inputs:
+
 - Flow: Trigger the output.
 - Color: Optional input to override the constant value.
 
 Outputs:
+
 - Flow: Triggered after output.
 - Result: The specified color in RGBA hex format.
 
@@ -138,10 +244,12 @@ Combines individual Red, Green, Blue, and Alpha components into a single color v
 Resulting output is an RGBA hex string.
 
 Inputs:
+
 - Flow: Trigger the merge.
 - R, G, B, A: Numerical components (0-255).
 
 Outputs:
+
 - Flow: Triggered after merge.
 - Color: The combined color in RGBA hex format.
 
@@ -155,10 +263,12 @@ Deconstructs a color value into its individual Red, Green, Blue, and Alpha compo
 Supports both RGBA hex strings and list formats.
 
 Inputs:
+
 - Flow: Trigger the split.
 - Color: The color value to split.
 
 Outputs:
+
 - Flow: Triggered after split.
 - R, G, B, A: The numerical components (0-255).
 
@@ -174,10 +284,12 @@ Calculates the average brightness/intensity of an image.
 Converts the image to grayscale and returns a normalized value (0.0 to 1.0).
 
 Inputs:
+
 - Flow: Trigger the calculation.
 - Image Data: The image to analyze (path string or PIL Image object).
 
 Outputs:
+
 - Flow: Triggered after the calculation is complete.
 - Average: The normalized average pixel value (0.0 = black, 1.0 = white).
 
@@ -189,15 +301,17 @@ Outputs:
 
 Visualizes image and video data directly within the node interface.
 
-Generates a high-performance thumbnail from local file paths, video frames, 
-or memory-resident PIL objects. Displays the preview on the node canvas 
+Generates a high-performance thumbnail from local file paths, video frames,
+or memory-resident PIL objects. Displays the preview on the node canvas
 for immediate feedback.
 
 Inputs:
+
 - Flow: Trigger the preview generation.
 - Image Data: The source path or image object to preview.
 
 Outputs:
+
 - Flow: Triggered after the thumbnail is generated.
 - Image Path: The resolved absolute path to the previewed resource.
 
@@ -217,6 +331,7 @@ Applies the selected 'Action' to an input image. Supported actions include:
 - Crop: Extract region [x, y, w, h] from Box input.
 
 Inputs:
+
 - Flow: Trigger the image process.
 - Image Path: Path to the source file.
 - Action: The visual effect or transformation to apply.
@@ -226,6 +341,7 @@ Inputs:
 - Box: Crop boundaries [x, y, w, h] (for Crop action).
 
 Outputs:
+
 - Flow: Triggered after processing completes.
 - Result Path: Path to the modified temporary image file.
 
@@ -237,10 +353,11 @@ Outputs:
 
 Automated image segmentation using the Segment Anything Model (SAM).
 
-This node can automatically identify and mask all objects in an image or perform 
+This node can automatically identify and mask all objects in an image or perform
 targeted segmentation based on coordinate prompts (points), bounding boxes, or labels.
 
 Inputs:
+
 - Flow: Trigger the segmentation process.
 - Image: The source image (Path, PIL Object, or Numpy Array).
 - Points: List of [x, y] coordinates for targeted segmentation.
@@ -251,6 +368,7 @@ Inputs:
 - Points Per Side: Grid density for automatic mask generation (auto mode).
 
 Outputs:
+
 - Flow: Triggered after segmentation completes.
 - Segments: List of detected mask objects with bbox and compliance data.
 - Count: The total number of identified segments.
@@ -263,16 +381,18 @@ Outputs:
 
 Performs pixel-wise subtraction between multiple images.
 
-Takes 'Image A' and subtracts 'Image B', 'Image C', etc., from it. 
-Useful for motion detection, background removal, or graphical effects. 
+Takes 'Image A' and subtracts 'Image B', 'Image C', etc., from it.
+Useful for motion detection, background removal, or graphical effects.
 Supports dynamic image inputs.
 
 Inputs:
+
 - Flow: Trigger the subtraction.
 - Image A: The base image to subtract from.
 - Image B, Image C...: Images to subtract.
 
 Outputs:
+
 - Flow: Pulse triggered after subtraction.
 - Result Path: Path where the resulting image is saved.
 - Result Image: The processed ImageObject.
@@ -290,6 +410,7 @@ Provides a "Provider Flow" for downstream nodes to access live frames or perform
 actions while the camera is active. Consumes the camera resource until stopped.
 
 Inputs:
+
 - Flow: Start the capture session.
 - Provider End: Close the session and stop recording.
 - Camera Index: Integer index or hardware name of the camera.
@@ -298,6 +419,7 @@ Inputs:
 - File Name: The base filename for the saved recording.
 
 Outputs:
+
 - Flow: Triggered after the session is successfully closed.
 - Video Data: The resulting video file or bytes.
 - Provider Flow: Active pulse during the session.
@@ -313,9 +435,11 @@ Retrieves the most recent frame from an active Camera Provider.
 This node acts as a consumer, pulling frames published by a capture service.
 
 Inputs:
+
 - Flow: Trigger the frame retrieval.
 
 Outputs:
+
 - Flow: Pulse triggered after the image is retrieved.
 - Image: The captured image object.
 
@@ -330,10 +454,12 @@ This node is self-contained and does not require a Camera Provider to be active.
 It opens the camera, grabs a frame, and coordinates immediate closure.
 
 Inputs:
+
 - Flow: Trigger the image capture.
 - Camera Index: Integer index or hardware name of the camera.
 
 Outputs:
+
 - Flow: Triggered after the capture attempt.
 - Image: The captured image object.
 
@@ -347,10 +473,12 @@ Scans the system for available camera devices (OpenCV indices and hardware names
 Returns a list of friendly names or indices that can be used by other Camera nodes.
 
 Inputs:
+
 - Flow: Trigger the scan.
 - Max Search: The maximum number of indices to probe.
 
 Outputs:
+
 - Flow: Triggered after the scan is complete.
 - Cameras: List of identified camera names.
 - Count: Total number of cameras found.
@@ -363,11 +491,12 @@ Outputs:
 
 Renders a compiled timeline into a video file.
 
-Uses MoviePy to process a 'SceneList' (timeline) and export it 
-as an MP4, GIF, or other video format. Supports resolution, FPS, 
+Uses MoviePy to process a 'SceneList' (timeline) and export it
+as an MP4, GIF, or other video format. Supports resolution, FPS,
 and audio ducking controls.
 
 Inputs:
+
 - Flow: Trigger the render.
 - Compiled Timeline: The SceneList data to render.
 - Output Path: Destination file path (default 'output.mp4').
@@ -377,6 +506,7 @@ Inputs:
 - Auto Ducking: Whether to automatically lower background music for speech.
 
 Outputs:
+
 - Flow: Pulse triggered once rendering completes.
 
 ---
@@ -387,16 +517,39 @@ Outputs:
 
 Initiates a new video timeline session.
 
-Creates an empty 'SceneList' object that can be populated with 
-clips, graphics, and audio by downstream nodes. Acts as a 
+Creates an empty 'SceneList' object that can be populated with
+clips, graphics, and audio by downstream nodes. Acts as a
 provider for video building tasks.
 
 Inputs:
+
 - Flow: Trigger the timeline start.
 
 Outputs:
+
 - Flow: Pulse triggered once the timeline is initialized.
 - SceneList: The empty SceneList object.
+
+---
+
+### Audio Device List
+
+**Version**: `2.1.0`
+
+Scans the system for available audio input and output devices.
+
+Returns granular lists of device names and their corresponding indices. This allows users to
+easily select a device by name and pass its ID to the 'Audio Record' node.
+
+Outputs:
+
+- Flow: Triggered after the scan is complete.
+- Input Names: List of device names (e.g., "Microphone").
+- Input IDs: List of integer indices corresponding to the names.
+- Output Names: List of device names (e.g., "Speakers").
+- Output IDs: List of integer indices corresponding to the names.
+- Input Count: Number of input devices found.
+- Output Count: Number of output devices found.
 
 ---
 

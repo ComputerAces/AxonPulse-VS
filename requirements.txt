@@ -9,3 +9,5 @@ PyYAML
 
 
 opencv-python
+pynput
+vosk

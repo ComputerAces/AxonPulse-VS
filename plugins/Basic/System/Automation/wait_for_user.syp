@@ -46,7 +46,8 @@
             "pos_y": -87.09679184535935,
             "properties": {
                 "Label": "",
-                "Additional Inputs": []
+                "Updated Camera Image": "",
+                "Additional Inputs": ["Updated Camera Image"]
             }
         },
         {
@@ -56,9 +57,7 @@
             "pos_x": -942.1836143679781,
             "pos_y": 72.63718367212826,
             "properties": {
-                "SingletonScope": false,
                 "Singleton Scope": false,
-                "Provider_Flow_ID": "",
                 "Provider Flow ID": "",
                 "Camera Index": "1",
                 "Additional Outputs": []
@@ -150,7 +149,7 @@
             "from_node": "e73b617c-1553-40ae-9107-91f62960680b",
             "from_port": "Last Image",
             "to_node": "12f3107e-4643-45c1-a054-bf6808381a17",
-            "to_port": "Last Camera Image"
+            "to_port": "Updated Camera Image"
         },
         {
             "from_node": "e73b617c-1553-40ae-9107-91f62960680b",

@@ -33,6 +33,7 @@ The standard base class for all nodes (`axonpulse/core/super_node.py`).
 - **Event-Driven**: Logic is triggered via `register_handler("Flow", self.callback)` rather than overriding `execute()`.
 - **Async & Threading**: Native support for asynchronous handlers and threaded execution loops.
 - **Defensive Data Resolution (v2.1.0)**: Automatically falls back to static node properties if expected wired inputs are missing.
+- **Port Standardization (v2.3.0)**: Strict Title Case naming for dynamic pins (`Additional Inputs`, `Additional Outputs`) prevents schema collisions and improves serialized readability.
 
 ### 2. The Bridge (axonpulse/core/bridge.py)
 
@@ -46,6 +47,7 @@ SVS supports secure distribution of logic via standardized `.zip` packages.
 - **Automated Extraction**: Packages are safely extracted to `plugins/extracted/` with dependency shielding.
 - **Hot-Loading**: Contents (nodes and subgraphs) are instantly registered into the active library upon successful authentication.
 - **Node Versioning (v2.2.0)**: Tracks the schema version of each node instance. Detects mismatches during load and facilitates interactive upgrades via the Bridge.
+- **YAML SubGraph Support (v2.3.0)**: Native parsing of `.syp` files in both JSON and YAML formats via `smart_load`, enabling clean, git-friendly graph storage.
 
 ---
 
@@ -83,8 +85,6 @@ Used for legacy or internal nodes. detailed description but lacks structured I/O
 
 Used for simple, self-explanatory nodes.
 *Example: "Compares two values and branches based on the result."*
-
-### Schema Definition
 
 ### Schema Definition
 
@@ -127,7 +127,8 @@ def define_schema(self):
 - **SubGraph File Rescue**: Automatic fallback to embedded `.syp` cache when dynamic graph targets are moved or deleted, with UI recovery hooks.
 - **Headless Execution Profiling**: Strictly gated backend parsing allows graphs to sprint down to `0.0s` logical tick rates without blocking the PyQt main thread.
 - **Node Library Tuning**: Toggleable DocStrings and instantaneous search filtering for a streamlined authoring experience.
-- **Canvas Rendering: Viewport Culling**: Your approach to only drawing visible nodes (with a slight buffer margin for smooth panning) is exactly the right path. In PyQt6, the QGraphicsScene relies heavily on bounding rects. By explicitly telling the canvas to suspend complex paint operations (like drop shadows, antialiasing on thick wires, or live text updates) when a node's bounding box intersects outside the visible viewport, you can keep the framerate locked at 60 FPS even with thousands of nodes. It is highly effective and requires far less overhead than writing custom OpenGL shaders.
+- **Canvas Rendering: Viewport Culling**: High-performance optimization that suspends complex paint operations for off-screen nodes, maintaining 60 FPS in massive graphs.
+- **Automated Schema Auditor**: Integrity script (`audit_node_schemas.py`) that enforces 0-violation parity between node properties and output schemas, ensuring 100% wiring reliability.
 
 ---
 
