@@ -8,15 +8,15 @@ class GlobalVarSetNode(SuperNode):
     Sets a variable at the global (root) level, accessible by any graph or subgraph.
     If the variable doesn't exist, it is created.
     
-    Inputs:
-    - Flow: Trigger the update.
-    - Var Name: The name of the variable.
-    - Value: The value to set.
+    ### Inputs:
+    - Flow (flow): Trigger the update.
+    - Var Name (string): The name of the variable.
+    - Value (any): The value to set.
     
-    Outputs:
-    - Flow: Pulse triggered after the variable is set.
+    ### Outputs:
+    - Flow (flow): Pulse triggered after the variable is set.
     """
-    version = "1.0.1"
+    version = "2.1.0"
 
     def __init__(self, node_id, name, bridge):
         super().__init__(node_id, name, bridge)
@@ -58,15 +58,15 @@ class GlobalVarGetNode(SuperNode):
     """
     Retrieves a variable from the global (root) level.
     
-    Inputs:
-    - Flow: Trigger the retrieval.
-    - Var Name: The name of the variable.
+    ### Inputs:
+    - Flow (flow): Trigger the retrieval.
+    - Var Name (string): The name of the variable.
     
-    Outputs:
-    - Flow: Pulse triggered after retrieval.
-    - Value: The current value of the global variable.
+    ### Outputs:
+    - Flow (flow): Pulse triggered after retrieval.
+    - Value (any): The current value of the global variable.
     """
-    version = "1.0.1"
+    version = "2.1.0"
 
     def __init__(self, node_id, name, bridge):
         super().__init__(node_id, name, bridge)

@@ -108,14 +108,14 @@ class ProjectMetadataGetNode(SuperNode):
     """
     Retrieves project metadata (Name, Version, Category, Description) from the bridge.
     
-    Outputs:
-    - Flow: Pulse triggered after retrieval.
-    - Name: Project Name.
-    - Version: Project Version.
-    - Category: Project Category.
-    - Description: Project Description.
+    ### Outputs:
+    - Flow (flow): Pulse triggered after retrieval.
+    - Name (string): Project Name.
+    - Version (string): Project Version.
+    - Category (string): Project Category.
+    - Description (string): Project Description.
     """
-    node_version = 1
+    version = "2.1.0"
 
     def __init__(self, node_id, name, bridge):
         super().__init__(node_id, name, bridge)
@@ -158,17 +158,17 @@ class ProjectMetadataSetNode(SuperNode):
     """
     Updates project metadata in the bridge.
     
-    Inputs:
-    - Flow: Trigger the update.
-    - Name: New Project Name.
-    - Version: New Project Version.
-    - Category: New Project Category.
-    - Description: New Project Description.
+    ### Inputs:
+    - Flow (flow): Trigger the update.
+    - Name (string): New Project Name.
+    - Version (string): New Project Version.
+    - Category (string): New Project Category.
+    - Description (string): New Project Description.
     
-    Outputs:
-    - Flow: Pulse triggered after the update.
+    ### Outputs:
+    - Flow (flow): Pulse triggered after the update.
     """
-    node_version = 1
+    version = "2.1.0"
 
     def __init__(self, node_id, name, bridge):
         super().__init__(node_id, name, bridge)

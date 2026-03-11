@@ -618,19 +618,17 @@ Outputs:
 
 ### List Add Item
 
-**Version**: `1.0.0`
+**Version**: `2.1.0`
 
-Appends one or more items to a list. Supports dynamically adding multiple input pins.
-
-Inputs:
-- Flow: Execution trigger.
-- List: The base list to add items to (starts empty if not provided).
+### Inputs:
+- Flow (flow): Execution trigger.
+- List (list): The base list to add items to (starts empty if not provided).
 - [Dynamic Inputs]: Add items via the Node's visual context menu.
 
-Outputs:
-- Flow: Triggered after the items are added.
-- Result: The updated list.
-- Count: The length of the updated list.
+### Outputs:
+- Flow (flow): Triggered after the items are added.
+- Result (list): The updated list.
+- Count (number): The length of the updated list.
 
 ---
 

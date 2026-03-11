@@ -9,15 +9,15 @@ class VaultSetNode(SuperNode):
     Encrypts and stores a secret in the local machine's Enterprise Vault.
     The secret is tied to this machine and will not be exported in the .syp JSON payload.
     
-    Inputs:
-    - Flow: Trigger the store action.
-    - Key: The alias/name for the secret (e.g., 'OPENAI_API_KEY').
-    - Secret: The plain text secret value to encrypt.
+    ### Inputs:
+    - Flow (flow): Trigger the store action.
+    - Key (string): The alias/name for the secret (e.g., 'OPENAI_API_KEY').
+    - Secret (string): The plain text secret value to encrypt.
     
-    Outputs:
-    - Flow: Pulse triggered after the secret is stored securely.
+    ### Outputs:
+    - Flow (flow): Pulse triggered after the secret is stored securely.
     """
-    version = "1.0.0"
+    version = "2.1.0"
 
     def __init__(self, node_id, name, bridge):
         super().__init__(node_id, name, bridge)
@@ -60,15 +60,15 @@ class VaultGetNode(SuperNode):
     """
     Retrieves and decrypts a secret from the local machine's Enterprise Vault.
     
-    Inputs:
-    - Flow: Trigger the retrieval action.
-    - Key: The alias/name for the secret used during Vault Set.
+    ### Inputs:
+    - Flow (flow): Trigger the retrieval action.
+    - Key (string): The alias/name for the secret used during Vault Set.
     
-    Outputs:
-    - Flow: Pulse triggered after retrieval.
-    - Value: The decrypted String payload, ready to be wired into API Providers.
+    ### Outputs:
+    - Flow (flow): Pulse triggered after retrieval.
+    - Value (string): The decrypted String payload, ready to be wired into API Providers.
     """
-    version = "1.0.0"
+    version = "2.1.0"
 
     def __init__(self, node_id, name, bridge):
         super().__init__(node_id, name, bridge)

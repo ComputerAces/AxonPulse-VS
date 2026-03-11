@@ -658,7 +658,7 @@ class BrowserElementAttributesNode(SuperNode):
     - Flow (flow): Triggered after extraction.
     - Attributes (any): Dictionary of {name: value}.
     """
-    version = "2.0.0"
+    version = "2.1.0"
 
     def __init__(self, node_id, name, bridge):
         super().__init__(node_id, name, bridge)

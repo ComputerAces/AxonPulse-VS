@@ -18,15 +18,15 @@ class HTMLStripTextNode(SuperNode):
     """
     Strips raw HTML down to its inner plain text content using BeautifulSoup.
     
-    Inputs:
-    - Flow: Execution trigger.
-    - HTML: The raw HTML string to process.
+    ### Inputs:
+    - Flow (flow): Execution trigger.
+    - HTML (string): The raw HTML string to process.
     
-    Outputs:
-    - Flow: Triggered after processing.
-    - Text: The stripped plain text.
+    ### Outputs:
+    - Flow (flow): Triggered after processing.
+    - Text (string): The stripped plain text.
     """
-    version = "1.0.0"
+    version = "2.1.0"
 
     def __init__(self, node_id, name, bridge):
         super().__init__(node_id, name, bridge)
