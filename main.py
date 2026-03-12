@@ -61,11 +61,11 @@ def main():
         return_nodes = []
         
         for nid, node in node_map.items():
-            # Check by Class Name to avoid imports
-            cname = node.__class__.__name__
-            if cname == "StartNode":
+            # Check by Node Type Label for decorator compatibility
+            ntype = getattr(node, "node_type", "")
+            if ntype == "Start Node":
                 start_nodes.append(node)
-            elif cname == "ReturnNode":
+            elif ntype == "Return Node":
                 return_nodes.append(node)
                 
         # Rule 1: Exactly One Start Node

@@ -289,12 +289,10 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
         start_count = 0
         return_count = 0
         for node_id, node in self.nodes.items():
-            node_type = type(node).__name__
-            if "StartNode" in node_type or node_type == "Start Node":
+            ntype = getattr(node, "node_type", "")
+            if ntype == "Start Node":
                 start_count += 1
-            elif hasattr(node, 'node_type') and "Start" in str(getattr(node, 'node_type', '')):
-                start_count += 1
-            if "ReturnNode" in node_type or "Return" in node_type:
+            elif ntype == "Return Node":
                 return_count += 1
         
         if start_count == 0:
@@ -530,8 +528,8 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
 
 
         # 1. Barrier/Return check
-        node_type = type(node).__name__
-        is_return = "ReturnNode" in node_type or "Return" in node_type
+        ntype = getattr(node, "node_type", "")
+        is_return = ntype == "Return Node"
         if is_return:
             active_scope = context_stack[-1] if context_stack else "ROOT"
             
