@@ -109,6 +109,10 @@ class DecoratedNode(SuperNode):
             if result is False:
                 return False
                 
+            # [NEW] Pass through Yield Signals (Wait/Throttle/etc.)
+            if isinstance(result, tuple) and len(result) > 0 and str(result[0]).startswith("_YS"):
+                return result
+
             if isinstance(result, dict) and len(self.custom_outputs) > 1:
                 for k, v in result.items():
                     if k in self.output_schema:

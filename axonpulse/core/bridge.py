@@ -6,6 +6,7 @@ from enum import Enum
 from multiprocessing import shared_memory
 from axonpulse.utils.logger import setup_logger
 from axonpulse.core.engine.services import ConnectionPoolManager
+from axonpulse.utils.shm_tracker import SHMTracker
 
 logger = setup_logger("AxonPulseBridge")
 
@@ -479,13 +480,17 @@ class AxonPulseBridge:
                     if shm.size < len(data_bytes):
                         # Too small, must recreate
                         shm.close()
-                        try: shm.unlink()
+                        try:
+                            shm.unlink()
+                            SHMTracker.unregister(shm_name)
                         except: pass
                         shm_name = f"syn_{hashlib.md5(scoped_key.encode()).hexdigest()[:10]}_{new_version}"
                         shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=shm_name)
+                        SHMTracker.register(shm_name)
                 except:
                     # Doesn't exist, create
                     shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=shm_name)
+                    SHMTracker.register(shm_name)
                 
                 try:
                     shm.buf[:len(data_bytes)] = data_bytes
@@ -493,6 +498,7 @@ class AxonPulseBridge:
                 except Exception as b_err:
                     shm.close()
                     shm.unlink()
+                    SHMTracker.unregister(shm_name)
                     raise b_err
                 
                 registry_update[scoped_key] = (shm_name, new_version, time.time(), len(data_bytes))
@@ -586,13 +592,16 @@ class AxonPulseBridge:
             # To be strictly safe with append causing growth, we create new and unlink old later.
             try:
                 shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=new_shm_name)
+                SHMTracker.register(new_shm_name)
                 shm.buf[:len(data_bytes)] = data_bytes
                 self._pinned_shm[new_shm_name] = shm
             except Exception as e:
                 logger.error(f"Failed to allocate new SHM for mutation of '{scoped_key}': {e}")
                 if 'shm' in locals():
                     shm.close()
-                    try: shm.unlink()
+                    try: 
+                        shm.unlink()
+                        SHMTracker.unregister(new_shm_name)
                     except: pass
                 return False
 
@@ -609,6 +618,7 @@ class AxonPulseBridge:
                     old_shm = self._pinned_shm.pop(shm_name)
                     old_shm.close()
                     old_shm.unlink()
+                    SHMTracker.unregister(shm_name)
             except: pass
             
             return True
@@ -660,14 +670,18 @@ class AxonPulseBridge:
                     if shm.size < len(data_bytes):
                         # Too small, must recreate
                         shm.close()
-                        try: shm.unlink()
+                        try:
+                            shm.unlink()
+                            SHMTracker.unregister(shm_name)
                         except: pass
                         shm_name = f"syn_{hashlib.md5(scoped_key.encode()).hexdigest()[:10]}_{new_version}"
                         shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=shm_name)
+                        SHMTracker.register(shm_name)
                 except (FileNotFoundError, Exception):
                     # Doesn't exist or failed to open, try to create
                     try:
                         shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=shm_name)
+                        SHMTracker.register(shm_name)
                     except (FileExistsError, Exception):
                         # Race condition: someone created it between the try and here
                         shm = shared_memory.SharedMemory(name=shm_name)
@@ -680,7 +694,9 @@ class AxonPulseBridge:
                     self._pinned_shm[shm_name] = shm 
                 except Exception as b_err:
                     shm.close()
-                    try: shm.unlink()
+                    try:
+                        shm.unlink()
+                        SHMTracker.unregister(shm_name)
                     except: pass
                     raise b_err
                 
@@ -747,6 +763,7 @@ class AxonPulseBridge:
                     shm = shared_memory.SharedMemory(name=metadata[0])
                     shm.close()
                     shm.unlink()
+                    SHMTracker.unregister(metadata[0])
                 except: pass
         
         # Cleanup pins

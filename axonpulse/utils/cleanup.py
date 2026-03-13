@@ -6,6 +6,7 @@ import subprocess
 import multiprocessing
 import time
 from axonpulse.utils.logger import setup_logger
+from axonpulse.utils.shm_tracker import SHMTracker
 
 logger = setup_logger("CleanupManager")
 
@@ -75,6 +76,39 @@ class CleanupManager:
             logger.error(f"Cleanup Error: {e}")
 
     @classmethod
+    def cleanup_orphaned_shm(cls):
+        """
+        [NEW] Orphaned SHM Garbage Collection.
+        Reads the SHM registry and unlinks any blocks that are still allocated in the OS.
+        This prevents memory leaks on Windows after crashes.
+        """
+        from multiprocessing import shared_memory
+        tracked_blocks = SHMTracker.get_all()
+        if not tracked_blocks:
+            return
+
+        logger.info(f"[SHM_GC] Checking {len(tracked_blocks)} tracked SHM blocks for orphans...")
+        cleaned_count = 0
+        for shm_name in tracked_blocks:
+            try:
+                # Try to attach. If it exists, we close and unlink it.
+                # If it doesn't exist, we just unregister it.
+                try:
+                    shm = shared_memory.SharedMemory(name=shm_name)
+                    shm.close()
+                    shm.unlink()
+                    cleaned_count += 1
+                except FileNotFoundError:
+                    pass # Already gone from OS
+                
+                SHMTracker.unregister(shm_name)
+            except Exception as e:
+                logger.debug(f"[SHM_GC] Failed to cleanup block '{shm_name}': {e}")
+        
+        if cleaned_count > 0:
+            logger.info(f"[SHM_GC] Successfully unlinked {cleaned_count} orphaned SHM blocks.")
+
+    @classmethod
     def handle_exception(cls, exc_type, exc_value, exc_traceback):
         """Global exception hook to capture crashes and ensure cleanup."""
         if issubclass(exc_type, KeyboardInterrupt):
@@ -106,6 +140,9 @@ def init_global_handlers():
     
     # 1. Sys Exception Hook
     sys.excepthook = manager.handle_exception
+
+    # [NEW] Perform initial SHM cleanup to catch orphans from previous crashes
+    manager.cleanup_orphaned_shm()
     
     # 2. Signal Handlers
     _shutting_down = False
