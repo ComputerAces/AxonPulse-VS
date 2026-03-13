@@ -16,6 +16,7 @@ SYSTEM_PROPERTIES = {
 _DYNAMIC_PATTERNS_RAW = [
     r"item \d+", r"case \d+", r"image [a-z]", r"last image", r"user present", 
     r"var \d+", r"port \d+", r"input \d+", r"output \d+", r"camera index",
+    r"path", r"success", r"result", r"data", r"image", # [FIX] Add common generic ports
     r"var.*", r"arg.*", r"param.*", r"last .* image", r"curr.* image", r"prev.* image"
 ]
 DYNAMIC_PATTERNS_COMPILED = [re.compile(p) for p in _DYNAMIC_PATTERNS_RAW]
@@ -134,15 +135,15 @@ def load_graph_data(data, bridge, engine, source_file=None):
         allowed_dynamic = set()
         for k, v in loaded_props.items():
             kl = k.lower().replace("_", " ")
-            if kl in ["additional inputs", "additionaloutputs"]: 
+            if kl in ["additional inputs", "additionalinputs"]: 
                  if isinstance(v, list):
-                    allowed_dynamic.update(name.lower() for name in v)
+                    allowed_dynamic.update(n.lower() for n in v if isinstance(n, str))
             elif kl in ["additional outputs", "additionaloutputs"]:
                  if isinstance(v, list):
-                    allowed_dynamic.update(name.lower() for name in v)
+                    allowed_dynamic.update(n.lower() for n in v if isinstance(n, str))
             elif kl == "cases":
                  if isinstance(v, list):
-                    allowed_dynamic.update(name.lower() for name in v)
+                    allowed_dynamic.update(n.lower() for n in v if isinstance(n, str))
             
         # We use a list of keys to safely iterate while deleting from the dict
 

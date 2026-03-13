@@ -272,11 +272,26 @@ class SuperNode(BaseNode):
         # 2. Route to Handler
         handler = self.handlers.get(trigger)
         if handler:
-            # [FIX] Refuse to run async handlers in sync context.
-            # The NodeDispatcher must route these upstream.
+            # [FIX] Optimized Async-in-Sync Fallback
+            # Modern nodes (Ollama/MCP/Playwright) often use async handlers. 
+            # If triggered in a sync context (e.g. via ThreadPool or direct call),
+            # we must bridge the gap without deadlocking the event loop.
             if inspect.iscoroutinefunction(handler):
-                self.logger.error(f"Sync dispatch tried to execute async handler for '{trigger}' on {self.name}. Routing failure!")
-                return False
+                try:
+                    import asyncio
+                    try:
+                        loop = asyncio.get_running_loop()
+                        # CRITICAL: If we are calling .result() on the same thread as the loop, we DEADLOCK.
+                        # Instead of blocking, we log an error and refuse to hang the system.
+                        self.logger.error(f"DEADLOCK RISK: Async handler '{trigger}' triggered on the Event Loop thread for {self.name}. Execution refused.")
+                        return False
+                    except RuntimeError:
+                        # No loop running in this thread - safe to use asyncio.run (blocks worker thread, not loop)
+                        self.logger.info(f"Async-in-Sync fallback: Executing '{trigger}' via asyncio.run for {self.name}")
+                        return asyncio.run(handler(**clean_args))
+                except Exception as e:
+                    self.logger.error(f"Async-in-Sync fallback failed for {self.name}: {e}")
+                    raise e
             
             return handler(**clean_args)
         else:

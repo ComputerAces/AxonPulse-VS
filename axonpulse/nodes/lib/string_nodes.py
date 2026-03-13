@@ -158,7 +158,7 @@ Outputs:
                 pass
     else:
         for (k, val) in kwargs.items():
-            if k == 'Flow':
+            if k == 'Flow' or k.startswith('_'):
                 continue
             else:
                 pass

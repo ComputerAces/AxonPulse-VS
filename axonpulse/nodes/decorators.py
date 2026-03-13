@@ -30,23 +30,22 @@ class DecoratedNode(SuperNode):
         self.input_mapping = {} # sanitized -> original
         self.property_defaults = {}
         
-        for name, param in self.sig.parameters.items():
-            if name in ["_bridge", "_node", "_node_id", "kwargs"] or name.startswith("_"):
+        for p_name, param in self.sig.parameters.items():
+            if p_name in ["_bridge", "_node", "_node_id", "kwargs"] or p_name.startswith("_"):
                 continue
             
             # Map underscores back to spaces if needed (heuristic)
-            original_name = name.replace("_", " ")
-            self.input_params.append(name)
-            self.input_mapping[name] = original_name
+            original_name = p_name.replace("_", " ")
+            self.input_params.append(p_name)
+            self.input_mapping[p_name] = original_name
             
             if param.default != inspect.Parameter.empty:
-                self.property_defaults[name] = param.default
+                self.property_defaults[p_name] = param.default
 
         super().__init__(node_id, name, bridge)
         # Restore execution flags after SuperNode/BaseNode init
         self.is_native = is_native
         self.is_async = is_async
-        self.name = self.func.__name__.replace("_", " ").title()
 
     def define_schema(self):
         # Build Inputs
@@ -99,8 +98,8 @@ class DecoratedNode(SuperNode):
         
         # Handle **kwargs if the function accepts it
         if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in self.sig.parameters.values()):
-            # Pass all remaining data_io inputs
-            args.update({k: v for k, v in kwargs.items() if k not in args})
+            # Pass all remaining data_io inputs, filtering out internal engine vars and Flow pulses
+            args.update({k: v for k, v in kwargs.items() if k not in args and not k.startswith("_") and k != "Flow"})
 
         try:
             result = self.func(**args)
@@ -139,10 +138,19 @@ def axon_node(category: str, version: str = "1.0.0", outputs: List[str] = None, 
         else:
             # Fallback: handle CamelCase and underscores
             raw_name = func.__name__
-            # Insert spaces before capital letters
+            # Insert spaces before capital letters (CamelCase -> Camel Case)
             label = re.sub(r'([a-z])([A-Z])', r'\1 \2', raw_name)
+            
+            # [FIX] If the label contains spaces or underscores, we can safely title() it.
+            # But if it's already a clean string like "ReturnNode", we want "Return Node".
+            # re.sub above handles "ReturnNode" -> "Return Node". 
             # Replace underscores with spaces
-            label = label.replace("_", " ").title()
+            label = label.replace("_", " ")
+            
+            # Apply title case ONLY to parts separated by spaces to preserve internal caps if needed 
+            # (though title() is usually fine if spaces exist).
+            label = label.title()
+
             # Remove "Node" suffix if it exists after conversion
             if label.endswith(" Node"):
                 label = label[:-5]
@@ -150,7 +158,16 @@ def axon_node(category: str, version: str = "1.0.0", outputs: List[str] = None, 
         # Create a dynamic wrapper class with a unique name for pickling
         class_name = f"Node_{func.__name__}"
         
+        # Analyze signature for dynamic capabilities
+        sig = inspect.signature(func)
+        allow_dynamic_in = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+        allow_dynamic_out = (outputs is not None) or (sig.return_annotation == dict) or (sig.return_annotation == Any)
+
         class DynamicNode(DecoratedNode):
+            allow_dynamic_inputs = allow_dynamic_in
+            allow_dynamic_outputs = allow_dynamic_out
+            node_label = label # [FIX] Ensure metadata is available on class
+
             def __init__(self, node_id, name, bridge):
                 super().__init__(node_id, name, bridge, func, category, version, outputs, is_native, is_async)
 
