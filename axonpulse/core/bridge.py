@@ -448,30 +448,25 @@ class AxonPulseBridge:
         
         self._shm_dirty = False
 
-    def set_batch(self, data_dict, source_node_id="System", scope_id=None):
+    def _write_shm(self, scoped_key, value):
         """
-        Writes multiple values. Atomic registry update for performance.
+        Private helper to handle the complex logic of writing to Shared Memory.
+        Acquires the hashed lock, manages SHM recreation/reuse, and updates local cache.
+        Returns metadata tuple: (shm_name, version, timestamp, length)
         """
-        target_scope = scope_id or self.default_scope
-        registry_update = {}
-        for key, value in data_dict.items():
-            scoped_key = f"{target_scope}:{key}"
+        import hashlib
+        try:
+            # 1. Serialize
+            data_bytes = msgpack.packb(value, default=msgpack_encode, use_bin_type=True)
             
             # [TIMEOUT LOCK] Wait up to 2.0 seconds for the lock
             lock = self._get_lock(scoped_key)
             acquired = lock.acquire(timeout=2.0)
             if not acquired:
                 logger.error(f"[TIMEOUT] Failed to acquire lock for '{scoped_key}' after 2s. Forcing overlap.")
-                # We do not return here, we proceed without the lock to prevent deadlocks (User Request)
-                
+            
             try:
-                # 1. Serialize
-                data_bytes = msgpack.packb(value, default=msgpack_encode, use_bin_type=True)
-                
-                # 2. Get Deterministic SHM Name (Reuse block)
-                import hashlib
-                
-                # 3. Manage SHM
+                # 2. Manage Versioning and Naming
                 old_metadata = self._variables_registry.get(scoped_key)
                 new_version = (old_metadata[1] + 1) if old_metadata else 1
                 
@@ -480,9 +475,9 @@ class AxonPulseBridge:
                 else:
                     shm_name = f"syn_{hashlib.md5(scoped_key.encode()).hexdigest()[:16]}"
                 
-                # Try to reuse existing shm if possible
                 shm = None
                 try:
+                    # Try to reuse existing shm if possible
                     shm = shared_memory.SharedMemory(name=shm_name)
                     if shm.size < len(data_bytes):
                         # Too small, must recreate
@@ -494,35 +489,62 @@ class AxonPulseBridge:
                         shm_name = f"syn_{hashlib.md5(scoped_key.encode()).hexdigest()[:10]}_{new_version}"
                         shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=shm_name)
                         SHMTracker.register(shm_name)
-                except:
-                    # Doesn't exist, create
-                    shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=shm_name)
-                    SHMTracker.register(shm_name)
-                
+                except (FileNotFoundError, Exception):
+                    # Doesn't exist or failed to open, try to create
+                    try:
+                        shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=shm_name)
+                        SHMTracker.register(shm_name)
+                    except (FileExistsError, Exception):
+                        # Race condition: someone created it between the try and here
+                        try:
+                            shm = shared_memory.SharedMemory(name=shm_name)
+                        except:
+                            # If still failing, recreate with epoch for uniqueness
+                            shm_name = f"syn_{hashlib.md5(scoped_key.encode()).hexdigest()[:10]}_{int(time.time()*1000)}"
+                            shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=shm_name)
+                            SHMTracker.register(shm_name)
+
                 try:
                     shm.buf[:len(data_bytes)] = data_bytes
+                    # 3. PIN handle to prevent Windows garbage collection
                     self._pinned_shm[shm_name] = shm 
                 except Exception as b_err:
-                    shm.close()
-                    shm.unlink()
-                    SHMTracker.unregister(shm_name)
+                    try:
+                        shm.close()
+                        shm.unlink()
+                        SHMTracker.unregister(shm_name)
+                    except: pass
                     raise b_err
                 
-                registry_update[scoped_key] = (shm_name, new_version, time.time(), len(data_bytes))
+                # 4. Update local cache (Zero-Copy win for this process)
                 self._local_cache[scoped_key] = (value, new_version)
                 
-            except (BrokenPipeError, EOFError, ConnectionResetError) as e:
-                # Silent during shutdown
-                pass
-            except Exception as e:
-                if "pipe is being closed" in str(e).lower():
-                    pass
-                else:
-                    logger.error(f"Batch Set failed for '{scoped_key}': {e}")
+                return (shm_name, new_version, time.time(), len(data_bytes))
+                
             finally:
                 if acquired:
                     try: lock.release()
                     except: pass
+        except Exception as e:
+             if "pipe is being closed" not in str(e).lower():
+                logger.error(f"Internal SHM write failed for '{scoped_key}': {e}")
+             raise e
+
+    def set_batch(self, data_dict, source_node_id="System", scope_id=None):
+        """
+        Writes multiple values. Atomic registry update for performance.
+        """
+        target_scope = scope_id or self.default_scope
+        registry_update = {}
+        for key, value in data_dict.items():
+            scoped_key = f"{target_scope}:{key}"
+            try:
+                metadata = self._write_shm(scoped_key, value)
+                registry_update[scoped_key] = metadata
+            except (BrokenPipeError, EOFError, ConnectionResetError):
+                pass
+            except Exception as e:
+                logger.error(f"Batch Set failed for '{scoped_key}': {e}")
         
         if registry_update:
             self._variables_registry.update(registry_update)
@@ -588,45 +610,25 @@ class AxonPulseBridge:
                 logger.error(f"Mutation logic failed on '{scoped_key}': {e}")
                 return False
                 
-            # 3. Serialize and Write Back
-            data_bytes = msgpack.packb(current_data, default=msgpack_encode, use_bin_type=True)
-            import hashlib
-            new_version = version + 1
-            new_shm_name = f"syn_{hashlib.md5(scoped_key.encode()).hexdigest()[:10]}_{new_version}"
-            
-            # Since size might have grown, we generally create a new block for simplicity and safety,
-            # or try to reuse if the existing SHM happened to be allocated larger previously.
-            # To be strictly safe with append causing growth, we create new and unlink old later.
+            # 3. Serialize and Write Back using unified helper
             try:
-                shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=new_shm_name)
-                SHMTracker.register(new_shm_name)
-                shm.buf[:len(data_bytes)] = data_bytes
-                self._pinned_shm[new_shm_name] = shm
-            except Exception as e:
-                logger.error(f"Failed to allocate new SHM for mutation of '{scoped_key}': {e}")
-                if 'shm' in locals():
-                    shm.close()
-                    try: 
-                        shm.unlink()
-                        SHMTracker.unregister(new_shm_name)
+                metadata = self._write_shm(scoped_key, current_data)
+                self._variables_registry[scoped_key] = metadata
+                self._shm_dirty = True
+                
+                # 4. Optional: Cleanup old block if it changed
+                # Since _write_shm might have reused the block, we only unlink if name changed
+                if metadata[0] != shm_name:
+                    try:
+                        if shm_name in self._pinned_shm:
+                            old_shm = self._pinned_shm.pop(shm_name)
+                            old_shm.close()
+                            old_shm.unlink()
+                            SHMTracker.unregister(shm_name)
                     except: pass
+            except Exception as e:
+                logger.error(f"Failed to write back mutated SHM for '{scoped_key}': {e}")
                 return False
-
-            # 4. Atomic Registry Update
-            self._variables_registry[scoped_key] = (new_shm_name, new_version, time.time(), len(data_bytes))
-            self._local_cache[scoped_key] = (current_data, new_version)
-            self._shm_dirty = True
-            
-            # 5. Cleanup Old Block (Deferred via unpinning in a real GC, 
-            # here we simply let pin_all/clear handle OS unlinks eventually, 
-            # or we explicitly unlink the immediate old one if we held the pin)
-            try:
-                if shm_name in self._pinned_shm:
-                    old_shm = self._pinned_shm.pop(shm_name)
-                    old_shm.close()
-                    old_shm.unlink()
-                    SHMTracker.unregister(shm_name)
-            except: pass
             
             return True
 
@@ -649,76 +651,17 @@ class AxonPulseBridge:
         scoped_key = f"{target_scope}:{key}"
         
         try:
-            # 1. Serialize
-            data_bytes = msgpack.packb(value, default=msgpack_encode, use_bin_type=True)
-            
-            # [TIMEOUT LOCK] Wait up to 2.0 seconds for the lock
-            lock = self._get_lock(scoped_key)
-            acquired = lock.acquire(timeout=2.0)
-            if not acquired:
-                logger.error(f"[TIMEOUT] Failed to acquire lock for '{scoped_key}' after 2s. Forcing overlap.")
-            
-            try:
-                # 2. Get Deterministic SHM Name (Reuse block)
-                import hashlib
-                
-                # 3. Manage SHM
-                old_metadata = self._variables_registry.get(scoped_key)
-                new_version = (old_metadata[1] + 1) if old_metadata else 1
-                
-                if old_metadata:
-                    shm_name = old_metadata[0]
-                else:
-                    shm_name = f"syn_{hashlib.md5(scoped_key.encode()).hexdigest()[:16]}"
-                
-                try:
-                    # Try to reuse existing shm if possible
-                    shm = shared_memory.SharedMemory(name=shm_name)
-                    if shm.size < len(data_bytes):
-                        # Too small, must recreate
-                        shm.close()
-                        try:
-                            shm.unlink()
-                            SHMTracker.unregister(shm_name)
-                        except: pass
-                        shm_name = f"syn_{hashlib.md5(scoped_key.encode()).hexdigest()[:10]}_{new_version}"
-                        shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=shm_name)
-                        SHMTracker.register(shm_name)
-                except (FileNotFoundError, Exception):
-                    # Doesn't exist or failed to open, try to create
-                    try:
-                        shm = shared_memory.SharedMemory(create=True, size=len(data_bytes), name=shm_name)
-                        SHMTracker.register(shm_name)
-                    except (FileExistsError, Exception):
-                        # Race condition: someone created it between the try and here
-                        shm = shared_memory.SharedMemory(name=shm_name)
-                        # If the one someone else created is too small, we have a problem, 
-                        # but usually keys have consistent types/sizes per pulse.
-                
-                try:
-                    shm.buf[:len(data_bytes)] = data_bytes
-                    # 4. PIN IMMEDIATELY (Keep handle alive)
-                    self._pinned_shm[shm_name] = shm 
-                except Exception as b_err:
-                    shm.close()
-                    try:
-                        shm.unlink()
-                        SHMTracker.unregister(shm_name)
-                    except: pass
-                    raise b_err
-                
-                # 5. Update Registry (Atomic)
-                # metadata format: (shm_name, version, timestamp, length)
-                self._variables_registry[scoped_key] = (shm_name, new_version, time.time(), len(data_bytes))
-                
-                # Update local cache immediately
-                self._local_cache[scoped_key] = (value, new_version)
-                self._shm_dirty = True
-                
-            finally:
-                if acquired:
-                    try: lock.release()
-                    except: pass
+            metadata = self._write_shm(scoped_key, value)
+            self._variables_registry[scoped_key] = metadata
+            self._shm_dirty = True
+        except (BrokenPipeError, EOFError, ConnectionResetError) as e:
+            # Silent during shutdown
+            pass
+        except Exception as e:
+            if "pipe is being closed" in str(e).lower():
+                pass
+            else:
+                logger.error(f"Failed to set Shared Memory for '{scoped_key}': {e}")
                     
         except (BrokenPipeError, EOFError, ConnectionResetError) as e:
             # Silent during shutdown
