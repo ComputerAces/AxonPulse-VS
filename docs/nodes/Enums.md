@@ -6,7 +6,7 @@ This document covers nodes within the **Enums** core category.
 
 ### Compare Type
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Provides a selectable comparison operator (e.g., ==, !=, >, <) as a pulse-triggered output.
 Essential for configuring conditional logic in nodes that require a comparison operator.
@@ -21,27 +21,9 @@ Outputs:
 
 ---
 
-### Random Type
-
-**Version**: `2.1.0`
-
-Standardizes the selection of random generation algorithms.
-
-Provides a consistent label for common random types like 'Number' (float), 
-'Integer', or 'Unique ID' (UUID). This node is typically linked to a 
-'Random' node to define its behavior.
-
-Inputs:
-- Value: The random type selection (Number, Integer, UID).
-
-Outputs:
-- Result: The selected type string.
-
----
-
 ### Write Mode
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Standardizes file writing behaviors such as 'Overwrite' or 'Append'.
 

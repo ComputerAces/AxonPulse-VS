@@ -2,256 +2,11 @@
 
 This document covers nodes within the **AI** core category.
 
-## 📂 Chunking
-
-### Chunk String
-
-**Version**: `2.1.0`
-
-Uses an AI Provider to perform intelligent semantic chunking of input text.
-If no AI Provider is available, it attempts to use a Chunking Provider or falls back to basic rules.
-
-Inputs:
-- Flow: Trigger execution.
-- Text: The text string to be chunked.
-- System Prompt: Instructions for the AI on how to perform chunking.
-
-Outputs:
-- Flow: Triggered after chunking is complete.
-- Chunks: The resulting list of text chunks.
-- Error Flow: Triggered if AI-based chunking fails.
-
----
-
-### Chunking Provider
-
-**Version**: `2.1.0`
-
-Base class for nodes that provide text chunking strategies.
-Registers a chunking strategy and optional configuration in the bridge.
-
-Inputs:
-- Flow: Trigger execution to register the provider.
-- Text: Optional text to chunk immediately upon registration.
-
-Outputs:
-- Flow: Triggered after registration (and optional chunking) is complete.
-- Chunks: The result of chunking the input text (if provided).
-
----
-
-### Fixed Size Chunking
-
-**Version**: `2.1.0`
-
-Splits text into chunks of a constant character length, with optional overlap.
-
-Inputs:
-- Flow: Trigger execution and register as a chunking provider.
-- Text: Optional text to chunk immediately.
-- ChunkSize: The desired length of each chunk in characters (default: 1000).
-- OverlapSize: Number of characters to overlap between adjacent chunks (default: 200).
-
-Outputs:
-- Flow: Triggered after registration/chunking.
-- Chunks: List of generated text chunks.
-
----
-
-### Paragraph Chunking
-
-**Version**: `2.1.0`
-
-Splits text into chunks based on paragraph boundaries (double newlines).
-
-Inputs:
-- Flow: Trigger execution and register as a chunking provider.
-- Text: Optional text to chunk immediately.
-
-Outputs:
-- Flow: Triggered after registration/chunking.
-- Chunks: List of generated paragraphs.
-
----
-
-### Semantic Chunking
-
-**Version**: `2.1.0`
-
-Splits text into semantic chunks by grouping paragraphs together up to a maximum size.
-
-Inputs:
-- Flow: Trigger execution and register as a chunking provider.
-- Text: Optional text to chunk immediately.
-- MaxChunkSize: The maximum allowed length for a combined chunk (default: 1000).
-
-Outputs:
-- Flow: Triggered after registration/chunking.
-- Chunks: List of combined semantic chunks.
-
----
-
-### Sentence Chunking
-
-**Version**: `2.1.0`
-
-Splits text into chunks based on sentence boundaries (. ! ?).
-
-Inputs:
-- Flow: Trigger execution and register as a chunking provider.
-- Text: Optional text to chunk immediately.
-
-Outputs:
-- Flow: Triggered after registration/chunking.
-- Chunks: List of generated sentences.
-
----
-
-## 📂 General
-
-### AI Models
-
-**Version**: `2.1.0`
-
-Retrieves the list of available models from the connected AI Provider.
-
-Inputs:
-- Flow: Trigger execution.
-
-Outputs:
-- Flow: Triggered after models are retrieved.
-- Models: A list containing the names or IDs of available models.
-- Count: The total number of available models found.
-
----
-
-### Ask AI
-
-**Version**: `2.1.0`
-
-Sends a prompt to a connected AI Provider and retrieves the generated response.
-Supports file attachments, system instructions, and structured JSON output.
-
-Inputs:
-- Flow: Trigger execution.
-- User Prompt: The main instruction or question for the AI.
-- System Prompt: Background instructions to define the AI's behavior.
-- Files: A list of file paths to be analyzed by the AI (if supported).
-- Model: Override the default model of the provider.
-- Return As JSON: If True, attempts to parse the AI's response as a JSON object.
-
-Outputs:
-- Flow: Triggered after the AI completes its response.
-- Text: The raw text response from the AI.
-- JSON: The extracted and parsed JSON data (if Return As JSON is enabled).
-- JSON Error: Description of any errors encountered during JSON parsing.
-- Error Flow: Triggered if the AI request or logic fails.
-
----
-
-### Token Counter
-
-**Version**: `2.1.0`
-
-Calculates the number of tokens in a given string using the connected AI Provider.
-If no provider is available, it uses a fallback heuristic estimation.
-
-Inputs:
-- Flow: Trigger execution.
-- String: The text string to count tokens for.
-
-Outputs:
-- Flow: Triggered after counting is complete.
-- Count: The estimated or exact number of tokens in the string.
-
----
-
-## 📂 ML
-
-### Anomaly Detection
-
-**Version**: `2.1.0`
-
-Identifies outliers or unusual data points within a numerical sequence using the Isolation Forest algorithm.
-Useful for fraud detection, fault monitoring, and data cleaning.
-
-Inputs:
-- Flow: Trigger execution and model training.
-- X List: A list of numerical values used to train the Isolation Forest model (requires at least 5 points).
-- Predict X: The specific value to be tested for anomaly status.
-- Contamination: The expected proportion of outliers in the data set (range: 0.0 to 0.5, default: 0.1).
-
-Outputs:
-- Flow: Triggered after detection is complete.
-- Is Anomaly: True if the Predict X value is determined to be an outlier.
-- Score: The anomaly score (lower values indicate more abnormal data).
-
----
-
-### Linear Regression
-
-**Version**: `2.1.0`
-
-Performs simple linear regression to predict a numerical value based on historical X-Y pairs.
-Ideal for trend estimation and simple forecasting.
-
-Inputs:
-- Flow: Trigger the training and prediction process.
-- X List: List of independent variable values (training features).
-- Y List: List of dependent variable values (training targets).
-- Predict X: The value for which to predict a corresponding Y.
-
-Outputs:
-- Flow: Triggered after prediction is complete.
-- Predicted Y: The estimated value calculated by the linear model.
-
----
-
-## 📂 NLP
-
-### Language Detector
-
-**Version**: `2.1.0`
-
-Identifies the primary language and confidence level of a given text string.
-Supports a wide variety of ISO language codes.
-
-Inputs:
-- Flow: Trigger the detection process.
-- Text: The string to be identified.
-
-Outputs:
-- Flow: Triggered after detection is complete.
-- Language Code: The ISO 639-1 language code of the detected language (e.g., 'en', 'fr', 'es').
-- Confidence: Probability score representing the detector's certainty (0.0 to 1.0).
-
----
-
-### Sentiment Analysis
-
-**Version**: `2.1.0`
-
-Analyzes the emotional tone of a text string using the VADER sentiment algorithm.
-Detects if a statement is positive, negative, or neutral.
-
-Inputs:
-- Flow: Trigger the analysis process.
-- Text: The string to be analyzed.
-
-Outputs:
-- Flow: Triggered after analysis is complete.
-- Compound Score: A normalized score between -1 (extremely negative) and +1 (extremely positive).
-- Is Positive: True if the text has a net positive sentiment.
-- Is Negative: True if the text has a net negative sentiment.
-- Is Neutral: True if the text is objectively neutral.
-
----
-
 ## 📂 Providers
 
 ### Gemini Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for Google's Gemini AI models.
 Registers an AI capability scope for 'Ask AI' and other consumer nodes.
@@ -271,7 +26,7 @@ Outputs:
 
 ### Ollama Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for locally hosted Ollama AI models.
 Registers an AI capability scope for 'Ask AI' and other consumer nodes.
@@ -292,7 +47,7 @@ Outputs:
 
 ### OpenAI Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for OpenAI's GPT models (or OpenAI-compatible APIs).
 Registers an AI capability scope for 'Ask AI' and other consumer nodes.
@@ -313,27 +68,9 @@ Outputs:
 
 ## 📂 Vector
 
-### Add Documents
-
-**Version**: `2.1.0`
-
-Indexes text documents into a connected Vector Database Provider.
-Requires an Embedding Provider to generate vectors for the documents.
-
-### Inputs:
-- Flow (flow): Trigger execution.
-- Documents (list): A list of text strings (or a single string) to be indexed.
-- Metadata (list): Optional list of dictionaries containing metadata for each document.
-
-### Outputs:
-- Flow (flow): Triggered after indexing is complete.
-- Success (boolean): True if the documents were successfully added, False otherwise.
-
----
-
 ### BM25 Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for BM25 (Best Matching 25) rank-based keyword search.
 Operates as a local Vector Provider using lexical relevance.
@@ -352,7 +89,7 @@ Outputs:
 
 ### FastEmbed Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for local document embedding using the 'fastembed' library.
 Highly optimized for CPU-based vector generation.
@@ -371,7 +108,7 @@ Outputs:
 
 ### Gemini Embeddings
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for Google's Gemini embedding models.
 Generates high-quality vector representations of text for semantic search.
@@ -390,7 +127,7 @@ Outputs:
 
 ### LanceDB
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for LanceDB, a serverless, persistent vector database.
 Stores and retrieves embedded vectors directly from local disk.
@@ -410,7 +147,7 @@ Outputs:
 
 ### Milvus
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for Milvus, a high-performance, cloud-native vector database.
 Manages connections to standalone Milvus instances or Milvus Lite.
@@ -431,7 +168,7 @@ Outputs:
 
 ### OpenAI Embeddings
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for OpenAI's text embedding models.
 Converts text into dense vectors for high-accuracy similarity search.
@@ -450,7 +187,7 @@ Outputs:
 
 ### Pinecone
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for Pinecone, a managed cloud-native vector database.
 Enables high-scale similarity search and persistent storage for AI applications.
@@ -469,7 +206,7 @@ Outputs:
 
 ### TF-IDF Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Service provider for TF-IDF (Term Frequency-Inverse Document Frequency) search.
 Operates as a local Vector Provider using statistical relevance rankings.
@@ -483,27 +220,6 @@ Outputs:
 - Provider Flow: Active while the provider service is running.
 - Provider ID: Unique ID for this specific provider instance.
 - Flow: Triggered when the service is stopped.
-
----
-
-### Vector Search
-
-**Version**: `2.1.0`
-
-Performs a semantic similarity search against a connected Vector Database Provider.
-Automatically leverages an Embedding Provider to vectorize the query before searching.
-Assumes a Provider Flow connection for both VECTOR and EMBED capabilities.
-
-### Inputs:
-- Flow (flow): Trigger the search operation.
-- Query (string): The text string to search for.
-- Limit (integer): The maximum number of results to return (default: 5).
-
-### Outputs:
-- Flow (flow): Triggered after search is complete.
-- Results (list): List of matching document text.
-- Scores (list): List of similarity scores (0.0 to 1.0).
-- Metadata (list): List of metadata dictionaries for each result.
 
 ---
 

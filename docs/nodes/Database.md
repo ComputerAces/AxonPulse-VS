@@ -6,7 +6,7 @@ This document covers nodes within the **Database** core category.
 
 ### SQL Delete
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Deletes rows from a database table based on specified filters.
 
@@ -23,7 +23,7 @@ Outputs:
 
 ### SQL Execute
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Executes a non-query SQL command (e.g., CREATE TABLE, DROP) on the database.
 
@@ -39,7 +39,7 @@ Outputs:
 
 ### SQL Insert
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Inserts a new record into a database table using a dictionary of data.
 
@@ -56,7 +56,7 @@ Outputs:
 
 ### SQL Query
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Executes a custom SQL query and returns the results as a list of dictionaries.
 
@@ -73,7 +73,7 @@ Outputs:
 
 ### SQL Select
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Executes a SELECT query on a database table and returns matching rows.
 
@@ -91,7 +91,7 @@ Outputs:
 
 ### SQL Update
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Updates existing records in a database table.
 
@@ -111,7 +111,7 @@ Outputs:
 
 ### CSV Data Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Exposes a directory of CSV files as a simple database.
 Allows other nodes to read from or write to CSV files within the specified folder.
@@ -128,7 +128,7 @@ Outputs:
 
 ### JSON Data Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Provides a mock database connection backed by a local JSON file.
 
@@ -143,7 +143,7 @@ Outputs:
 
 ### Memory Data Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Provides a temporary in-memory SQL database connection.
 
@@ -157,7 +157,7 @@ Outputs:
 
 ### MySQL Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Provides a connection to a MySQL database server.
 
@@ -176,7 +176,7 @@ Outputs:
 
 ### ODBC Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Provides a connection to a database via ODBC connection string.
 
@@ -191,7 +191,7 @@ Outputs:
 
 ### SQLite Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Provides a connection to a local SQLite database file.
 
@@ -208,7 +208,7 @@ Outputs:
 
 ### Redis Delete
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Removes a key and its value from Redis.
 
@@ -224,7 +224,7 @@ Outputs:
 
 ### Redis Get
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Retrieves a value from Redis by its key.
 
@@ -241,7 +241,7 @@ Outputs:
 
 ### Redis Keys
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Retrieves a list of keys matching a specified pattern.
 
@@ -257,7 +257,7 @@ Outputs:
 
 ### Redis Provider
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Provides a connection to a Redis server for key-value storage and pub/sub.
 
@@ -276,7 +276,7 @@ Outputs:
 
 ### Redis Publish
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Publishes a message to a Redis channel.
 
@@ -293,7 +293,7 @@ Outputs:
 
 ### Redis Set
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Stores a value in Redis with an optional time-to-live (TTL).
 
@@ -311,7 +311,7 @@ Outputs:
 
 ### Redis Subscribe
 
-**Version**: `2.1.0`
+**Version**: `2.3.0`
 
 Subscribes to a Redis channel and triggers Flow for each received message.
 

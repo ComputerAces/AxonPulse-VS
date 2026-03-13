@@ -56,7 +56,7 @@ class AudioRecordNode(ProviderNode):
     - Provider Flow: Active while the microphone is recording.
     - Provider ID: Unique identifier for this specific recording session.
     """
-    version = "2.2.0"
+    version = "2.3.0"
 
     def __init__(self, node_id, name, bridge):
         super().__init__(node_id, name, bridge)

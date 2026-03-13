@@ -16,7 +16,8 @@ from axonpulse.core.types import DataType, TypeCaster
 
 from axonpulse.nodes.decorators import axon_node
 
-@axon_node(category="File System", version="2.3.0", node_label="Copy File", outputs=['Error Flow'])
+@axon_node(category="File System",    version = "2.3.0"
+, node_label="Copy File", outputs=['Error Flow'])
 def CopyNode(Source: str = '', Destination: str = '', _bridge: Any = None, _node: Any = None, _node_id: str = None, **kwargs) -> Any:
     """Copies a file or directory from a source path to a destination path.
 Supports recursive directory copying and automatic parent directory creation.

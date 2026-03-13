@@ -16,7 +16,8 @@ from axonpulse.core.types import DataType, TypeCaster
 
 from axonpulse.nodes.decorators import axon_node
 
-@axon_node(category="File System", version="2.3.0", node_label="Create File", outputs=['Error Flow'])
+@axon_node(category="File System",    version = "2.3.0"
+, node_label="Create File", outputs=['Error Flow'])
 def CreateFileNode(Content: str, Path: str = '', _bridge: Any = None, _node: Any = None, _node_id: str = None, **kwargs) -> Any:
     """Creates a new file at the specified path with the provided content.
 Automatically creates parent directories and supports overwriting existing files.

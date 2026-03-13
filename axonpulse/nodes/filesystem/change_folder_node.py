@@ -12,7 +12,7 @@ from axonpulse.core.types import DataType, TypeCaster
 
 from axonpulse.nodes.decorators import axon_node
 
-@axon_node(category="File System", version="2.3.0", node_label="Change Folder", outputs=['Error Flow'])
+@axon_node(category="File System", version = "2.3.0", node_label="Change Folder", outputs=['Error Flow'])
 def ChangeFolderNode(Path: str = '', _bridge: Any = None, _node: Any = None, _node_id: str = None, **kwargs) -> Any:
     """Changes the current working directory or global path reference for file operations.
 Validates that the target path exists and is a directory before applying the change.

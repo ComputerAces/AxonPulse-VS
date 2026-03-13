@@ -5,9 +5,7 @@ Welcome to the Node Reference. AxonPulse VS features over 100+ native nodes cate
 ## 📂 Node Categories
 
 - [AI](AI.md)
-- [Automation](Automation.md)
 - [Browser](Browser.md)
-- [Connectivity](Connectivity.md)
 - [Data](Data.md)
 - [Database](Database.md)
 - [Enums](Enums.md)
@@ -20,9 +18,7 @@ Welcome to the Node Reference. AxonPulse VS features over 100+ native nodes cate
 - [Network](Network.md)
 - [Security](Security.md)
 - [System](System.md)
-- [Text](Text.md)
 - [UI](UI.md)
-- [Workflow](Workflow.md)
 
 ---
 

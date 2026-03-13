@@ -12,7 +12,8 @@ from axonpulse.core.types import DataType, TypeCaster
 
 from axonpulse.nodes.decorators import axon_node
 
-@axon_node(category="File System", version="2.3.0", node_label="Current Folder", outputs=['Path'])
+@axon_node(category="File System",    version = "2.3.0"
+, node_label="Current Folder", outputs=['Path'])
 def CurrentFolderNode(_bridge: Any = None, _node: Any = None, _node_id: str = None, **kwargs) -> Any:
     """Retrieves the absolute path of the current working directory or the specific project path context.
 

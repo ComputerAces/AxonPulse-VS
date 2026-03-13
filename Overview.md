@@ -129,6 +129,8 @@ def define_schema(self):
 - **Node Library Tuning**: Toggleable DocStrings and instantaneous search filtering for a streamlined authoring experience.
 - **Canvas Rendering: Viewport Culling**: High-performance optimization that suspends complex paint operations for off-screen nodes, maintaining 60 FPS in massive graphs.
 - **Automated Schema Auditor**: Integrity script (`audit_node_schemas.py`) that enforces 0-violation parity between node properties and output schemas, ensuring 100% wiring reliability.
+- **Visual Execution Tracing (v2.9.11)**: Wires feature smooth color gradients based on connector types and real-time green pulse highlights on incoming connections during execution, making data flow intuitive and easy to follow.
+- **Unified Node Standard (v2.3.0)**: 100% of the standard library (87 nodes) has been audited and migrated to the latest SuperNode specs, ensuring consistent property handling and fully synced documentation.
 
 ---
 
