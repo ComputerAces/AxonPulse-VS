@@ -14,7 +14,7 @@ The heart of SVS, responsible for graph pulsing and node execution.
 - **Yielding**: Nodes can return `_YSWAIT` or `_YSYIELD` signals to pause execution without blocking the thread, allowing other ready nodes to run.
 - **Context Management**: `ContextManager` handles nested scopes (loops, try/catch, subgraphs).
 - **Node Dispatching**: `NodeDispatcher` routes nodes to either the **Native Track** (Worker Thread) or **Heavy Track** (Subprocess).
-- **Lifecycle Management (v2.1.0)**: Nodes strictly follow the `define_schema() -> register_handlers() -> __init__` sequence. 
+- **Lifecycle Management (v2.3.0)**: Nodes strictly follow the `define_schema() -> register_handlers() -> __init__` sequence.
   - **Defensive Data Resolution**: If `execute()` receives a `kwargs` mismatch, it automatically checks `self.properties` for fallback values before failing.
 
 ### 2. AxonPulse Bridge (`AxonPulseBridge`)
@@ -34,7 +34,9 @@ The frontend built with PyQt6.
 
 - **Minimap/Miniworld**: Detachable high-performance overview viewports with independent OS window grouping.
 - **Bridge Poller**: Syncs visual state with the backend at 33Hz.
-- **Canvas Rendering (Viewport Culling)**: Your approach to only drawing visible nodes (with a slight buffer margin for smooth panning) is exactly the right path. In PyQt6, the QGraphicsScene relies heavily on bounding rects. By explicitly telling the canvas to suspend complex paint operations (like drop shadows, antialiasing on thick wires, or live text updates) when a node's bounding box intersects outside the visible viewport, you can keep the framerate locked at 60 FPS even with thousands of nodes. It is highly effective and requires far less overhead than writing custom OpenGL shaders.
+- **Canvas Rendering (Viewport Culling)**: Only visible nodes are rendered to maintain 60 FPS.
+- **Gradient Wire Painting (v2.9.11)**: The `Wire` class uses `QLinearGradient` within its `paint()` method. Colors are dynamically retrieved from the connected `Port` objects via `get_color_from_port()`, allowing for smooth transitions between different data types (e.g., String to Any).
+- **Execution Pulse Tracing**: When a node is "pulsed" by the engine, it triggers `highlight_active()` on all incoming wires, which initiates a temporary visual highlight animation.
 
 ---
 
@@ -56,7 +58,7 @@ Written in Python and registered directly into the library. These are best for l
 
     @NodeRegistry.register("My Custom Node", "My Category")
     class MyNode(SuperNode):
-        version = "2.1.0"
+        version = "2.3.0"
 
         def __init__(self, node_id, name, bridge):
             super().__init__(node_id, name, bridge)
@@ -97,9 +99,9 @@ Any graph you create in the Architect can become a reusable node.
     - **Phase 1 (Boot)**: Scans for `.syp` and unencrypted `.spy` nodes for instant availability. Uses `SourceFileLoader` to bypass `.py` extension requirements.
     - **Phase 2 (Bridge Up)**: Performs a second pass with a `bridge` handle to process encrypted `.zip` packages.
 - **ZIP Extraction Lifecycle**:
-    - Enforces extraction to `plugins/extracted/<zip_name>/`.
-    - Uses a directory-existence guard to prevent redundant extractions.
-    - Supports AES-256 via `pyzipper` with a manual password request flow.
+  - Enforces extraction to `plugins/extracted/<zip_name>/`.
+  - Uses a directory-existence guard to prevent redundant extractions.
+  - Supports AES-256 via `pyzipper` with a manual password request flow.
 - **Property Propagation**: Custom properties set on the parent "SubGraph Node" are automatically injected into the internal `Start Node` of the child graph.
 
 ### 3. Creating Custom AI Providers
@@ -409,11 +411,13 @@ During `load_graph_data`, the engine compares the `node_version` stored in the g
 
 ### 3. Interactive Upgrade Path
 The UI can request an upgrade via the Bridge:
+
 ```python
 bridge.request_node_upgrade(node_id, latest_version)
 ```
 
 The `ExecutionEngine` polls for these requests in its control loop. When found, it:
+
 1. Re-instantiates the node using the latest class.
 2. Migrates compatible properties (preserving existing user configuration).
 3. Re-registers ports via `PortRegistry` to maintain wire integrity.

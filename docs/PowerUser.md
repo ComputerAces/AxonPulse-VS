@@ -20,7 +20,7 @@ AxonPulse caches SubGraphs for performance. If you edit a SubGraph file while th
 
 The Engine now enforces types strictly on Math ports to prevent silent errors.
 
-- **Trick**: If you have a string "123" and need to Add it, use a **Python Script** node to cast it: `return int(A)`, OR rely on the Engine's new auto-caster which handles string-to-number conversion gracefully.
+- **Trick**: If you have a string "123" and need to Add it, use a **Python Script** node to cast it: `return int(A)`, OR rely on the Engine's auto-caster. As of **v2.3.0**, standard nodes strictly enforce schema types to ensure high-performance execution.
 
 ### 4. Parallel Processing
 
@@ -58,6 +58,13 @@ The Browser and Search engines use "Magic" logic to resolve elements without fra
 
 -> [!TIP]
 > Use the **Miniworld** to jump between these complex logic blocks quickly.
+
+### 9. Visual Flow Debugging (v2.9.11)
+
+The UI now provides real-time feedback on your logic flow.
+
+- **Check Your Gradients**: Wires that are solid colors mean the data types match perfectly. If you see a gradient, it means a type conversion or "Any" type cast is happening at the destination.
+- **Trace the Pulse**: During execution, watch for the green pulses on wires. If a node isn't running when you expect it to, follow the pulse—it will show you exactly where the flow stopped.
 
 ---
 [Return to README](file:///f:/My%20Programs/AxonPulse%20VS/README.md)

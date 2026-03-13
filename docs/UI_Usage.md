@@ -17,7 +17,8 @@ This is where you build your graphs.
 
 - **Connecting logic**: Click a port (the small circles) and drag a wire to another port.
   - **Green wires**: These decide the *order* of events (Do this, then do that).
-  - **Colored wires**: These pass *data* (like a name, a number, or a message).
+  - **Gradient wires**: Wires now feature smooth color gradients. They transition from the output port's color to the input port's color, making it easy to see where data is coming from and where it's going.
+  - **Execution Pulse**: When a node is active, its incoming wires will pulse green, providing clear visual feedback of the live data flow.
 
 ## ⚡ Advanced Flow Design
 
@@ -37,6 +38,7 @@ Search for anything here! You can find AI tools, math, system commands, and more
 ### Right Side: Settings & Properties
 
 - **Properties Tab**: This is where you configure the selected node (e.g., typing a message for the AI).
+  - **Clean Labels**: Variable ports now show clean, human-readable names without technical abbreviations like `(S)` or `(N)`.
 - **Project Tab**: Change your project name or category here.
 
 ### Top Right: Smart Search

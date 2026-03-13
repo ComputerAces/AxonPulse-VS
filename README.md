@@ -15,7 +15,8 @@
   * **Visual Feedback**:
     * **Purple Highlight**: Running Native Service (e.g., Flask).
     * **Green Border**: Active SubGraph execution.
-    * **Kinetic Fading**: Wires fade out over 1 second to trace execution paths.
+    * **Gradient Wires (v2.9.11)**: Wires smoothly transition color between ports, providing intuitive data flow mapping.
+    * **Execution Pulse (v2.9.11)**: Incoming wires pulse green when a node executes, tracing flow in real-time.
   * **Smart Features**:
     * **Hot-Reloading**: Auto-updates subgraphs when files change.
     * **Auto-Save**: Triggers 3 seconds after metadata changes.

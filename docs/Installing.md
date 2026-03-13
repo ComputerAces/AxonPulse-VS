@@ -47,3 +47,6 @@ After selection, it will set up the virtual environment and launch the Architect
 - See what the nodes do in the [Node Reference](file:///f:/My%20Programs/AxonPulse%20VS/docs/NodeList.md).
 - Advanced tricks and example graphs in the [Power User Guide](file:///f:/My%20Programs/AxonPulse%20VS/docs/PowerUser.md).
 - Developers can check the [Technical Guide](file:///f:/My%20Programs/AxonPulse%20VS/docs/developer.md).
+
+&nbsp;
+*AxonPulse VS - Core Standard v2.3.0 Compliance Verified.*
