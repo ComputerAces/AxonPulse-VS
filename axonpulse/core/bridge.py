@@ -10,6 +10,9 @@ from axonpulse.utils.shm_tracker import SHMTracker
 
 logger = setup_logger("AxonPulseBridge")
 
+# Performance Cache for msgpack_decode
+_types_module = None
+
 def msgpack_encode(obj):
     if isinstance(obj, Enum):
         return {'__enum__': str(obj.__class__.__name__), 'value': obj.value}
@@ -22,11 +25,15 @@ def msgpack_encode(obj):
     return str(obj)
 
 def msgpack_decode(obj):
+    global _types_module
     if '__enum__' in obj:
         enum_name = obj['__enum__']
-        import axonpulse.core.types as types_module
-        if hasattr(types_module, enum_name):
-            enum_class = getattr(types_module, enum_name)
+        if _types_module is None:
+            import axonpulse.core.types as types_module
+            _types_module = types_module
+        
+        if hasattr(_types_module, enum_name):
+            enum_class = getattr(_types_module, enum_name)
             return enum_class(obj['value'])
         return obj['value']
     if '__datetime__' in obj:
