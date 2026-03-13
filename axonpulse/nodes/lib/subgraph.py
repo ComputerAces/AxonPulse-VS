@@ -428,6 +428,11 @@ class SubGraphNode(SuperNode):
                 captured_ports.add(k)
             
             # [PORT MISMATCH REPORTING]
+            # [FIX] Suppress reporting if the engine is in the process of stopping
+            if self.bridge.get("_SYSTEM_STOP_ENGINE"):
+                self.logger.info(f"SubGraph '{self.name}' execution aborted by system stop. Suppressing results.")
+                return False
+
             for expected_port in self.output_schema.keys():
                 if expected_port in ["Flow", "Error Flow"]: continue
                 if expected_port not in captured_ports:

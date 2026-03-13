@@ -6,10 +6,11 @@ from axonpulse.utils.logger import main_logger as logger
 from axonpulse.utils.file_utils import smart_load
 
 # Properties that are always allowed (system metadata)
+# [FIX] Standardize to lowercase for robust case-insensitive matching
 SYSTEM_PROPERTIES = {
-    "Label", "label", "Provider Flow ID", "Singleton Scope", 
-    "Graph Path", "Embedded Data", "Is Debug", "Header Color",
-    "Additional Inputs", "Additional Outputs", "Cases"
+    "label", "provider flow id", "singleton scope", 
+    "graph path", "embedded data", "is debug", "header color",
+    "additional inputs", "additional outputs", "cases"
 }
 
 # [OPTIMIZATION] Pre-compiled dynamic patterns for property matching

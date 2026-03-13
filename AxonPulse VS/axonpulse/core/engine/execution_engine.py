@@ -304,8 +304,8 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
         
         # [CONTEXT INITIALIZATION]
         # If this is a child engine (subgraph), inherit parent stack.
-        # Otherwise start with an empty stack.
-        initial_stack = []
+        # Otherwise start with the provided or default stack.
+        initial_stack = pulse_stack if pulse_stack is not None else []
         if self.parent_bridge and self.parent_node_id:
             # SubGraph inheritance: The parent node might have an active stack
             # We can pull it from the bridge if the parent pushed it there, 
@@ -499,194 +499,128 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
         finally:
             logger.info(f"Branch Thread Finished: {start_node_id}")
 
-    def _execute_step(self, node_id, pulse_stack, trigger_port, flow_controller):
-        """
-        Executes a single node pulse cycle. 
-        Thread-safe and shared between main thread and parallel branches.
-        Returns: True if iteration should continue, False if thread should terminate.
-        """
-        # 0. Setup
-        context_stack = list(pulse_stack) if pulse_stack else []
-        node = self.nodes.get(node_id)
-
-        # 0. [NEW] Cancellation Check
-        # If any scope in the stack is marked as canceled in the bridge, drop this pulse.
+    def _check_cancellation(self, context_stack, pulse_stack, node_name):
+        """[PIPELINE] Checks if any scope in the stack is marked as canceled."""
         for scope_id in context_stack:
             if self.bridge.get(f"AXONPULSE_CANCEL_SCOPE_{scope_id}"):
-                # Node might be None if it was removed by hot reload, so check before accessing .name
-                node_name = node.name if node else node_id
                 logger.info(f"Cancellation: Dropping pulse for {node_name} (Scope {scope_id} terminated)")
                 self._decrement_scope_counts(pulse_stack)
                 self._check_scope_terminations()
-                return False
-
-        if not node:
-            logger.error(f"Node {node_id} not found!")
-            # Decrement pulse count for this "failed" pulse
-            self._decrement_scope_counts(pulse_stack)
-            return True
-
-
-        # 1. Barrier/Return check
-        ntype = getattr(node, "node_type", "")
-        is_return = ntype == "Return Node"
-        if is_return:
-            active_scope = context_stack[-1] if context_stack else "ROOT"
-            
-            # [FIX] Do NOT apply Return Barrier for Loop Iterations
-            # Loops manage their own continuity via active_ports/stack_overrides.
-            # Terminating them here can break the loop chain.
-            is_loop_scope = str(active_scope).startswith("LO_")
-            
-            if not is_loop_scope:
-                # [LOCKBOX] Gather return data immediately
-                return_data = self._gather_inputs(node_id, trigger_port)
-                
-                
-                if return_data:
-                    # [STRICT WHITELIST] Filter by schema AND aggressive keyword block
-                    reserved = ["Flow", "Exec", "In", "_trigger", "_bridge", "_engine", "_context_stack", "_context_pulse"]
-                    blocked_keywords = ["color", "additional", "schema", "label", "context", "provider"]
-                    
-                    payload = {}
-                    for k, v in return_data.items():
-                        # [FIX] Capture ALL non-reserved, non-UI-blocked ports
-                        # Dynamic Return nodes may not have 'Last Image' in their schema cache yet.
-                        if k in reserved:
-                            continue
-                            
-                        # Allow internal metadata, block everything else containing keywords
-                        if k.startswith("_AXON_"):
-                            payload[k] = v
-                            continue
-                            
-                        pn_lower = k.lower()
-                        if any(kw in pn_lower for kw in blocked_keywords):
-                            continue
-                        payload[k] = v
-                    
-                    with self._lock:
-                        if active_scope not in self.deferred_returns:
-                            self.deferred_returns[active_scope] = {}
-                        self.deferred_returns[active_scope].update(payload)
-                        
-                        # [LABEL] Stash node name for the parent return path
-                        label = node.name if node.name != "Return Node" else "Flow"
-                        self.deferred_returns[active_scope]["__RETURN_NODE_LABEL__"] = label
-                        
-                        logger.info(f"Stashed return payload and label '{label}' from {node_id} in {active_scope} lockbox.")
-
-                with self._lock:
-                    other_pulses = self.scope_pulse_counts.get(active_scope, 0)
-                if other_pulses > 1:
-                    logger.info(f"Terminating parallel branch at ReturnNode. (Other pulses in {active_scope}: {other_pulses})")
-                    
-                    self._decrement_scope_counts(pulse_stack)
-                    self._check_scope_terminations()
-                    return False
-
-        # 2. Controls (Speed/Pause)
-        self._handle_controls()
-        if not self.headless and self.bridge.get("_SYSTEM_STEP_BACK"):
-            # Master thread handles step back; branches just wait or skip
-            if threading.current_thread() == threading.main_thread():
-                self.bridge.set("_SYSTEM_STEP_BACK", False, "Engine")
-                self._step_back()
-                # If main thread steps back, it means the current node was put back in queue.
-                # So this pulse didn't "complete" its execution cycle.
-                # We should NOT decrement its count here.
                 return True
-            else:
-                # Branch threads just wait for the main thread to resolve the step back
-                while self.bridge.get("_SYSTEM_STEP_BACK"): time.sleep(0.1)
+        return False
 
-        # 3. Validation & Update Stack
+    def _handle_return_barrier(self, node, node_id, context_stack, trigger_port, pulse_stack):
+        """[PIPELINE] Handles return node logic and branch termination."""
+        ntype = getattr(node, "node_type", "")
+        if ntype != "Return Node":
+            return True
+            
+        active_scope = context_stack[-1] if context_stack else "ROOT"
+        is_loop_scope = str(active_scope).startswith("LO_")
+        
+        if not is_loop_scope:
+            return_data = self._gather_inputs(node_id, trigger_port)
+            if return_data:
+                reserved = ["Flow", "Exec", "In", "_trigger", "_bridge", "_engine", "_context_stack", "_context_pulse"]
+                blocked_keywords = ["color", "additional", "schema", "label", "context", "provider"]
+                
+                payload = {}
+                for k, v in return_data.items():
+                    if k in reserved: continue
+                    if k.startswith("_AXON_"):
+                        payload[k] = v
+                        continue
+                    pn_lower = k.lower()
+                    if any(kw in pn_lower for kw in blocked_keywords): continue
+                    payload[k] = v
+                
+                with self._lock:
+                    if active_scope not in self.deferred_returns:
+                        self.deferred_returns[active_scope] = {}
+                    self.deferred_returns[active_scope].update(payload)
+                    label = node.name if node.name != "Return Node" else "Flow"
+                    self.deferred_returns[active_scope]["__RETURN_NODE_LABEL__"] = label
+                    logger.info(f"Stashed return payload and label '{label}' from {node_id} in {active_scope} lockbox.")
+
+        with self._lock:
+            other_pulses = self.scope_pulse_counts.get(active_scope, 0)
+            
+        if other_pulses > 1:
+            logger.info(f"Terminating parallel branch at ReturnNode. (Other pulses in {active_scope}: {other_pulses})")
+            self._decrement_scope_counts(pulse_stack)
+            self._check_scope_terminations()
+            return False 
+            
+        return True
+
+    def _resolve_inputs(self, node, node_id, trigger_port, context_stack, pulse_stack, flow_controller):
+        """[PIPELINE] Validates provider context and gathers node inputs."""
         try:
             self._validate_provider_context(node, context_stack)
         except RuntimeError as e:
             logger.error(f"Provider Validation Error in {node.name}: {e}")
-            # Notify UI of Error State (Red Highlight)
             print(f"[NODE_ERROR] {node_id} | {e}", flush=True)
             
-            # Handle as standard error
             handler_info = self.context_manager.handle_error(e, node, context_stack, self.wires)
             if handler_info:
-                handler_id, parent_stack, catch_wires = handler_info[:3]
-
+                _, parent_stack, catch_wires = handler_info[:3]
                 for w in catch_wires:
                     flow_controller.push(w["to_node"], parent_stack, w["to_port"])
                     self._increment_scope_count(parent_stack, 1)
             else:
-                # If unhandled, we can either stop or panic. 
-                # For visual feedback, we want the node to stay red.
-                # We trigger the panic handler which might stop the engine or just log.
                 self._handle_panic(e, node, context_stack, None, inputs=None)
             
-            # Final Decrement for this pulse
             self._decrement_scope_counts(pulse_stack)
-            return True
+            return None 
 
         node_inputs = self._gather_inputs(node_id, trigger_port)
         if node_inputs is None:
-            # strict validation failed. Error Flow triggered in _gather_inputs.
             logger.warning(f"Skipping {node.name} due to Validation Failure.")
-            
-            # Check if Local Error Flow is wired
-            local_error_wired = False
-            for w in self.wires:
-                if w["from_node"] == node_id and w["from_port"] in ["Error Flow", "Error", "Panic"]:
-                    local_error_wired = True
-                    break
-            
+            local_error_wired = any(w["from_node"] == node_id and w["from_port"] in ["Error Flow", "Error", "Panic"] for w in self.wires)
             if local_error_wired:
-                # 4a. Local Route Output Flow (Error Flow only)
-                triggered = flow_controller.route_outputs(
-                    node_id, 
-                    self.wires, 
-                    self.bridge, 
-                    context_stack,
-                    headless=self.headless
-                )
+                triggered = flow_controller.route_outputs(node_id, self.wires, self.bridge, context_stack, headless=self.headless)
                 self._increment_scope_count(context_stack, sum(triggered.values()))
             else:
-                # 4b. Global Panic Fallback
                 error = ValueError(f"Validation Failed in {node.name}")
-                self._handle_panic(error, node, context_stack, None, inputs=node_inputs)
+                self._handle_panic(error, node, context_stack, None, inputs=None)
             
-            # Final Decrement for this pulse
             self._decrement_scope_counts(pulse_stack)
-            return True
+            return None 
+            
+        return node_inputs
 
-        context_stack = self.context_manager.update_stack(node, context_stack, trigger_port)
-
-        # 4. Dispatch & Execute
+    def _dispatch_task(self, node, node_id, node_inputs, context_stack, pulse_stack, flow_controller):
+        """[PIPELINE] Dispatches the node task and waits for completion."""
         if self.trace and not self.headless: print(f"[NODE_START] {node_id}", flush=True)
-        # Sanitize
         self.bridge.bubble_set(f"{node_id}_ActivePorts", None, "Engine_Sanitize")
         self.bridge.bubble_set(f"{node_id}_Condition", None, "Engine_Sanitize")
 
         logger.info(f"Executing {node.name} (Context: {len(context_stack)})...")
-        exec_result = None
-        # Trigger Bubble-up
         if self.parent_bridge and self.parent_node_id:
             self.parent_bridge.bubble_set(f"{self.parent_node_id}_SubGraphActivity", True, "ChildEngine")
             print(f"[AXON_SUBGRAPH_ACTIVITY] {self.parent_node_id}")
 
-        # [FIX] Thread-Safe Context Passing
-        # We pass it in inputs so handlers can access it, and to the dispatcher explicitly.
-        # We NO LONGER set node.context_stack = context_stack here because nodes are singletons
-        # and parallel pulses would overwrite each other.
         node_inputs["_context_stack"] = context_stack
         
         try:
             result_future = self.dispatcher.dispatch(node, node_inputs, context_stack)
+            while not result_future.done():
+                if self._check_hot_reload(): self.hot_reload_graph()
+                if self._check_stop_signal():
+                    logger.info(f"Stop signal received while waiting for {node.name}. Pulse dropped.")
+                    self._decrement_scope_counts(pulse_stack)
+                    return ("STOP", None)
+                self._handle_controls()
+                time.sleep(0.01)
+
             exec_result = result_future.wait()
             self.bridge.pin_all()
+            if self.trace and not self.headless: print(f"[NODE_STOP] {node_id}", flush=True)
+            return ("CONTINUE", exec_result)
         except Exception as e:
-            # Error Handling
             handler_info = self.context_manager.handle_error(e, node, context_stack, self.wires)
             if handler_info:
-                handler_id, parent_stack, catch_wires = handler_info[:3]
+                _, parent_stack, catch_wires = handler_info[:3]
                 self._auto_cleanup_scopes(context_stack, parent_stack)
                 for w in catch_wires:
                     flow_controller.push(w["to_node"], parent_stack, w["to_port"])
@@ -694,27 +628,19 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
             else:
                 self._handle_panic(e, node, context_stack, None, inputs=node_inputs)
             
-            # Final Decrement for this pulse
             self._decrement_scope_counts(pulse_stack)
-            return True
+            return ("ERROR", None)
 
-        if self.trace and not self.headless: print(f"[NODE_STOP] {node_id}", flush=True)
-        if exec_result is not None: self.bridge.bubble_set(f"{node_id}_Condition", exec_result, "Engine_Sync")
+    def _route_signals(self, node, node_id, exec_result, context_stack, pulse_stack, trigger_port, flow_controller):
+        """[PIPELINE] Handles wireless signals, yield logic, and output routing."""
+        if exec_result is not None: 
+            self.bridge.bubble_set(f"{node_id}_Condition", exec_result, "Engine_Sync", scope_id=self.bridge.default_scope)
         self._handle_wireless(node, context_stack)
 
-        # [YIELD HANDLING] Check for Special Yield Signals in Result
-        # Nodes can return ("_YSWAIT", ms) or ("_YSYIELD",) to pause/defer
         cond_result = exec_result 
-        
-        # Debug Logging
-        if isinstance(cond_result, tuple) and len(cond_result) > 0 and str(cond_result[0]).startswith("_YS"):
-             logger.info(f"Yield Signal Detected: {cond_result}")
-
-        # Check priority from node (set during execute)
         node_priority = self.bridge.get(f"{node_id}_Priority")
         current_prio = int(node_priority) if node_priority is not None else 0
 
-        # 5. Routing
         is_provider = hasattr(node, "register_provider_context")
         provider_type = node.register_provider_context() if is_provider else None
         is_delayable_provider = is_provider and provider_type != "Flow Provider"
@@ -722,53 +648,36 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
         completion_ports = ["Done"]
 
         stack_overrides = {}
-        # 1. Provider Scoping (Native)
         if is_delayable_provider and prov_wired:
             stack_overrides["Provider Flow"] = context_stack + [node_id]
             with self._lock:
                 if node_id not in self.scope_pulse_counts: self.scope_pulse_counts[node_id] = 0
         
-        # 2. General Scoping (Bridge-driven)
         user_overrides = self.bridge.get(f"{node_id}_StackOverrides")
-        if isinstance(user_overrides, dict):
-            stack_overrides.update(user_overrides)
+        if isinstance(user_overrides, dict): stack_overrides.update(user_overrides)
 
         delay_ms = 0
         if isinstance(cond_result, tuple) and len(cond_result) >= 2 and cond_result[0] == "_YSWAIT":
             delay_ms = cond_result[1]
-            # Check for Pulse Flag (Index 2)
-            should_pulse = False
-            if len(cond_result) > 2:
-                should_pulse = bool(cond_result[2])
-            
-            if should_pulse:
-                print(f"[NODE_WAITING_PULSE] {node_id} | {delay_ms}", flush=True)
-            else:
-                print(f"[NODE_WAITING_START] {node_id} | {delay_ms}", flush=True)
+            should_pulse = len(cond_result) > 2 and bool(cond_result[2])
+            if should_pulse: print(f"[NODE_WAITING_PULSE] {node_id} | {delay_ms}", flush=True)
+            else: print(f"[NODE_WAITING_START] {node_id} | {delay_ms}", flush=True)
 
         triggered = flow_controller.route_outputs(
             node_id, self.wires, self.bridge, context_stack,
             headless=self.headless, trace=self.trace,
-            priority=current_prio,
-            delay=delay_ms,
+            priority=current_prio, delay=delay_ms,
             stack_override_map=stack_overrides,
             port_exclude=completion_ports if is_delayable_provider and prov_wired else None,
             push_directly=False
         )
 
         if triggered:
-            # Primary continues in current thread
             primary = triggered[0]
-            if delay_ms > 0:
-                logger.info(f"Delaying primary flow -> {primary['to_node']} by {delay_ms}ms")
             flow_controller._push_flow_intent(primary, self.headless, self.trace)
             self._increment_scope_count(primary["stack"], 1)
-            
-            # Spawn threads for additional branches
             for i in range(1, len(triggered)):
                 bp = triggered[i]
-                if delay_ms > 0:
-                    logger.info(f"Delaying branch flow -> {bp['to_node']} by {delay_ms}ms")
                 self._increment_scope_count(bp["stack"], 1)
                 threading.Thread(
                     target=self._run_branch,
@@ -781,7 +690,6 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
             if sub_count > 0:
                 with self._lock: self.pending_terminations[node_id] = (context_stack, current_prio, delay_ms)
             else:
-                # Immediate completion
                 triggered_comp = flow_controller.route_outputs(
                     node_id, self.wires, self.bridge, context_stack,
                     port_include=completion_ports, priority=current_prio, delay=delay_ms,
@@ -790,17 +698,69 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
                 )
                 self._increment_scope_count(context_stack, len(triggered_comp))
 
-        # 6. Step Cleanup
-        self._decrement_scope_counts(pulse_stack) # Use original pulse stack for decrement
+        # Final cleanup for this pulse
+        self._decrement_scope_counts(pulse_stack)
         self._check_scope_terminations()
         
-        if node.is_service and node.node_id not in self.service_registry:
+        if node.is_service and node_id not in self.service_registry:
             logger.info(f"Persistent Service Registered: {node.name}")
-            self.service_registry[node.node_id] = node
-            self.bridge.bubble_set(f"{node.node_id}_IsServiceRunning", True, "Engine")
-            print(f"[SERVICE_START] {node.node_id}")
+            self.service_registry[node_id] = node
+            self.bridge.bubble_set(f"{node_id}_IsServiceRunning", True, "Engine")
+            print(f"[SERVICE_START] {node_id}")
 
         return True
+
+    def _execute_step(self, node_id, pulse_stack, trigger_port, flow_controller):
+        """
+        Executes a single node pulse cycle using the refactored pipeline.
+        Thread-safe and shared between main thread and parallel branches.
+        Returns: True if iteration should continue, False if thread should terminate.
+        """
+        # 1. Pipeline: Context and Node Lookup
+        context_stack = list(pulse_stack) if pulse_stack else []
+        node = self.nodes.get(node_id)
+        node_name = node.name if node else node_id
+
+        # 2. Pipeline: Cancellation
+        if self._check_cancellation(context_stack, pulse_stack, node_name):
+            return False
+
+        if not node:
+            logger.error(f"Node {node_id} not found!")
+            self._decrement_scope_counts(pulse_stack)
+            return True
+
+        # 3. Pipeline: Return Barrier
+        if not self._handle_return_barrier(node, node_id, context_stack, trigger_port, pulse_stack):
+            return False
+
+        # 4. Pipeline: Controls
+        self._handle_controls()
+        if not self.headless and self.bridge.get("_SYSTEM_STEP_BACK"):
+            if threading.current_thread() == threading.main_thread():
+                self.bridge.set("_SYSTEM_STEP_BACK", False, "Engine")
+                self._step_back()
+                return True
+            else:
+                while self.bridge.get("_SYSTEM_STEP_BACK"): time.sleep(0.1)
+
+        # 5. Pipeline: Resolve Inputs & Validation
+        node_inputs = self._resolve_inputs(node, node_id, trigger_port, context_stack, pulse_stack, flow_controller)
+        if node_inputs is None:
+            return True
+
+        # 6. Pipeline: Update Context Stack
+        context_stack = self.context_manager.update_stack(node, context_stack, trigger_port)
+
+        # 7. Pipeline: Dispatch & Execute
+        status, exec_result = self._dispatch_task(node, node_id, node_inputs, context_stack, pulse_stack, flow_controller)
+        if status == "STOP":
+            return False
+        if status == "ERROR":
+            return True
+
+        # 8. Pipeline: Routing & Signals
+        return self._route_signals(node, node_id, exec_result, context_stack, pulse_stack, trigger_port, flow_controller)
 
     def _decrement_scope_counts(self, stack):
         """Helper to safely decrement pulse hierarchy."""
