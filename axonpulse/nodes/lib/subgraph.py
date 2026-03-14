@@ -313,7 +313,7 @@ class SubGraphNode(SuperNode):
             pause_file = self.bridge.get("_SYSTEM_PAUSE_FILE")
             speed_file = self.bridge.get("_SYSTEM_SPEED_FILE")
 
-            child_engine = ExecutionEngine(
+            self._active_engine = ExecutionEngine(
                 child_bridge, 
                 headless=False,
                 delay=0.0,
@@ -328,7 +328,7 @@ class SubGraphNode(SuperNode):
             )
             
             from axonpulse.core.loader import load_graph_data
-            load_graph_data(data, child_bridge, child_engine)
+            load_graph_data(data, child_bridge, self._active_engine)
                 
             # Find Start Node ID first — needed for bridge key injection
             start_id = None
@@ -338,7 +338,7 @@ class SubGraphNode(SuperNode):
                     break
             
             # Inject parent kwargs into child bridge
-            child_registry = child_engine.port_registry
+            child_registry = self._active_engine.port_registry
             
             # [FIX] System properties must be filtered from BOTH kwargs and self.properties
             # to prevent Graph Path/Embedded Data from leaking down the SubGraph chain
@@ -383,7 +383,7 @@ class SubGraphNode(SuperNode):
                 
             if start_id:
                 try:
-                    child_engine.run(start_id)
+                    self._active_engine.run(start_id)
                 except Exception as e:
                     import traceback
                     self.logger.error(f"Nested SubGraph Failed: {e}\n{traceback.format_exc()}")
@@ -445,6 +445,33 @@ class SubGraphNode(SuperNode):
             self.bridge.set(f"{self.node_id}_ActivePorts", active_ports, self.name)
             return True
         finally:
+            self._active_engine = None
             # CRITICAL: Clean up the Manager process to prevent leaks (ONLY if we created it)
             if local_manager:
                 manager.shutdown()
+
+    def on_live_swap(self, node_data):
+        """
+        Propagates nested graph changes to the active child engine.
+        Called by parent engine when this node's properties are patched.
+        """
+        if not hasattr(self, "_active_engine") or not self._active_engine:
+            return
+
+        props = node_data.get("properties", {})
+        embedded = props.get("Embedded Data")
+        
+        if embedded:
+            self.logger.info(f"[LiveSwap] Propagating embedded graph patch to child engine: {self.name}")
+            self._active_engine.apply_live_swap(embedded)
+        else:
+            path = props.get("Graph Path")
+            if path and os.path.exists(path):
+                self.logger.info(f"[LiveSwap] Propagating file-based graph patch to child engine: {self.name}")
+                try:
+                    import json
+                    with open(path, 'r') as f:
+                        data = json.load(f)
+                    self._active_engine.apply_live_swap(data)
+                except Exception as e:
+                    self.logger.error(f"[LiveSwap] Failed to load patch from {path}: {e}")

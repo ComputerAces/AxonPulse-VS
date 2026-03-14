@@ -114,56 +114,79 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
         self.wires.append(wire)
 
     def hot_reload_graph(self):
-        """Reloads the graph from disk and patches the running engine state."""
+        """Reloads the graph from disk and surgically patches the running engine."""
         if not self.source_file or not os.path.exists(self.source_file):
             return
 
         logger.info(f"Hot Reloading Graph: {self.source_file}")
         try:
             import json
-            from axonpulse.core.loader import load_graph_data
-            
             with open(self.source_file, 'r') as f:
                 data = json.load(f)
             
+            # Use apply_live_swap for surgical patching
+            if self.apply_live_swap(data):
+                # Update mtime to prevent double reload
+                self._last_mtime = os.path.getmtime(self.source_file)
+                # [TRACE] Notify UI
+                if self.trace:
+                    print(f"[HOT_RELOAD] {self.source_file}", flush=True)
+                logger.info("Hot Reload Successful.")
+            else:
+                logger.error("Hot Reload Failed.")
+        except Exception as e:
+            logger.error(f"Hot Reload Error: {e}")
+
+    def apply_live_swap(self, patch_data):
+        """
+        Surgically patches the running graph state with new data.
+        Reuses existing node instances to maintain stateful connections.
+        """
+        try:
+            from axonpulse.core.loader import load_graph_data
+            
             # 1. Capture current node ids for deletion tracking
             old_node_ids = set(self.nodes.keys())
-            new_node_data = {n['id']: n for n in data.get("nodes", [])}
-            new_node_ids = set(new_node_data.keys())
             
-            # 2. Add New Nodes / Update Existing
-            # Clear wires before reloading (they will be repopulated by load_graph_data)
+            # 2. Clear wires (will be repopulated by loader)
             self.wires = []
             
-            node_map, was_pruned = load_graph_data(data, self.bridge, self, existing_nodes=self.nodes)
+            # 3. Load new data into existing engine structure
+            # load_graph_data will reuse nodes from self.nodes if IDs match
+            node_map, was_pruned = load_graph_data(patch_data, self.bridge, self, existing_nodes=self.nodes)
             self.nodes = node_map
             
-            # 3. Handle Deletions
+            # 4. Handle Deletions
+            new_node_ids = set(n['id'] for n in patch_data.get("nodes", []))
             deleted_ids = old_node_ids - new_node_ids
             for d_id in deleted_ids:
                 node = self.nodes.get(d_id)
                 if node:
-                    if hasattr(node, 'terminate'):
-                        try:
-                            node.terminate()
+                    # Cleanup Services
+                    if hasattr(node, "terminate"):
+                        try: node.terminate()
                         except: pass
-                    self.nodes.pop(d_id, None)
                     self.service_registry.pop(d_id, None)
-                    logger.info(f"Hot Reload: Removed node {d_id}")
+                    self.nodes.pop(d_id, None)
+                    logger.info(f"[LiveSwap] Removed node {d_id}")
 
-            # 4. Sync Wires (Full replace is easiest for flow)
-            self.wires = data.get("wires", [])
-            # Re-initialize wires in flow controller
+            # 5. Full Wire and Flow Sync
+            # Loader repopulated self.wires, but we must ensure FlowController knows.
             self.flow.wires = self.wires
             
-            # [TRACE] Notify UI of reload if tracing enabled
-            if self.trace:
-                print(f"[HOT_RELOAD] {self.source_file}", flush=True)
-            
-            logger.info("Hot Reload Complete. Changes will take effect on next node pulse.")
-            
+            # 5. Notify existing nodes of property updates
+            for n_id, node in self.nodes.items():
+                if n_id in old_node_ids and hasattr(node, "on_live_swap"):
+                    # Pass the node's specific new data if available
+                    new_n_data = next((n for n in patch_data.get("nodes", []) if n["id"] == n_id), None)
+                    if new_n_data:
+                        node.on_live_swap(new_n_data)
+
+            logger.info(f"[LiveSwap] Patch applied. {len(self.nodes)} nodes active.")
+            return True
         except Exception as e:
-            logger.error(f"Hot Reload Failed: {e}")
+            logger.error(f"[LiveSwap] Patch failed: {e}")
+            return False
 
     def _check_node_upgrades(self):
         """Checks Bridge for any pending node upgrade requests."""
@@ -853,6 +876,15 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
                 time.sleep(0.1)
                 
             logger.info("Execution resumed.")
+
+        # 4. [NEW] Live Swapping Check
+        if self.bridge.get("_SYSTEM_LIVE_SWAP_DATA"):
+            patch_data = self.bridge.get("_SYSTEM_LIVE_SWAP_DATA")
+            if patch_data:
+                logger.info("[LiveSwap] Signal detected. Applying patch at pulse barrier...")
+                if self.apply_live_swap(patch_data):
+                    # Clear signal after success
+                    self.bridge.set("_SYSTEM_LIVE_SWAP_DATA", None, "Engine")
 
     def _sync_settings(self):
         """Polls disk and bridge for runtime configuration changes."""
