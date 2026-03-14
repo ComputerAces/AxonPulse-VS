@@ -471,6 +471,11 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
                 # Cleanup visual states from bridge before stopping services
                 self._clear_all_visuals()
                 
+                # [FIX] Close dispatcher worker pools before stopping node services
+                # to prevent race conditions during OS shutdown.
+                if self.dispatcher:
+                     self.dispatcher.shutdown()
+                
                 # Only root thread should shutdown services if it's truly the end
                 self.stop_all_services()
             
@@ -801,6 +806,12 @@ class ExecutionEngine(DataMixin, StateMixin, ServiceMixin, DebugMixin):
 
         # 7. Pipeline: Dispatch & Execute
         status, exec_result = self._dispatch_task(node, node_id, node_inputs, context_stack, pulse_stack, flow_controller)
+        
+        # [NEW] Auto-Register background services for cleanup
+        if getattr(node, "is_service", False) and node_id not in self.service_registry:
+            self.service_registry[node_id] = node
+            logger.info(f"Registered background service for cleanup: {node.name} ({node_id})")
+
         if status == "STOP":
             return False
         if status == "ERROR":
